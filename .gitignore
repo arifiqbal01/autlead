@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+
+# Environment
+.env
+.env.*
+
+# project internal knowledge
+project-internal-knowledge/
+
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff / mypy
+.mypy_cache/
+.ruff_cache/
+
+# Logs
+logs/
+*.log
+
+# Generated exports
+exports/*
+!exports/.gitkeep
+
+# OS
+.DS_Store
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Celery
+celerybeat-schedule
+
+# Local database/data
+*.sqlite3
