@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "area": "Lahore, Pakistan",
+    "category": "dentists",
+    "boundary": {
+      "name": "Lahore Region",
+      "north": 31.770727245045048,
+      "south": 31.360637154954954,
+      "east": 74.51922794504505,
+      "west": 74.10913785495495
+    },
+    "search_mode": "grid",
+    "enrichment": {
+      "details_fetched": true,
+      "reviews_fetched": false,
+      "reviews_limit": 0
+    }
+  },
+  "statistics": {
+    "total_cells": 42,
+    "completed_cells": 42,
+    "failed_cells": 0,
+    "total_collected": 0,
+    "duplicates_removed": 0,
+    "filtered_outside_boundary": 0,
+    "search_time_seconds": 40.8,
+    "total_time_seconds": 40.8
+  },
+  "businesses": []
+}

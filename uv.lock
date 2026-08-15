@@ -113,11 +113,12 @@ wheels = [
 [[package]]
 name = "autlead"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },
     { name = "celery" },
+    { name = "gmaps-extractor" },
     { name = "httpx" },
     { name = "playwright" },
     { name = "psycopg", extra = ["binary"] },
@@ -144,6 +145,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.16" },
     { name = "asyncpg", specifier = ">=0.30" },
     { name = "celery", specifier = ">=5.5" },
+    { name = "gmaps-extractor", specifier = ">=2.0.0" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "playwright", specifier = ">=1.52" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
@@ -310,6 +312,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7d/64/a02e6765de08964ed371eca577870593245afc9dfac16d037de7c10d18e6/filelock-3.32.3.tar.gz", hash = "sha256:0ffa185a3540854c95caa7fa76b76cb219d907415e2c5dc9af25fd970563487f", size = 218135, upload-time = "2026-08-13T16:00:05.577Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/8e/50f46a9c0ce8d2861a394c1347caae037ea0431d2f67d7feb151cbc4649a/filelock-3.32.3-py3-none-any.whl", hash = "sha256:7f0ca4bcc0e181c60dbbd8aa9ab5b120ebb99e4e064e83636340056f833a1f09", size = 98901, upload-time = "2026-08-13T16:00:03.974Z" },
+]
+
+[[package]]
+name = "gmaps-extractor"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/43/82/9e3a071498effeb63d9c0f387ce1c8d567fda201c00071c05876cc5457dd/gmaps_extractor-2.0.0.tar.gz", hash = "sha256:f3c460ea32d9730ba1236733d2b1d7589cd8aa4270edb590e242467298d90db2", size = 97130, upload-time = "2026-02-09T14:29:45.709Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f0/09/b7edd37d68f7964c479f5cdebb23183d7194375694a7bca1b70786c57278/gmaps_extractor-2.0.0-py3-none-any.whl", hash = "sha256:0e5f74481d1215c5897fa6db4e7570d77b32c031533c3bbe8c7d9a675a2c2835", size = 110025, upload-time = "2026-02-09T14:29:41.033Z" },
 ]
 
 [[package]]

@@ -1,16 +1,14 @@
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.core.config.settings import settings
-from app.core.database.base import Base
-
 # Import persistence models so they are registered with Base.metadata.
 import app.models.persistence  # noqa: F401
-
+from alembic import context
+from app.core.config.settings import settings
+from app.core.database.base import Base
 
 config = context.config
 

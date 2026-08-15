@@ -44,6 +44,8 @@ They define the intended architecture and development rules for that part of the
 
 Before deciding what to implement next, read:
 
+    handovers/
+
     app/execution_plan.md
 
 This is the primary implementation roadmap.

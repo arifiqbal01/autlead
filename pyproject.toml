@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "autlead"
 version = "0.1.0"
@@ -8,6 +12,7 @@ dependencies = [
     "alembic>=1.16",
     "asyncpg>=0.30",
     "celery>=5.5",
+    "gmaps-extractor>=2.0.0",
     "httpx>=0.28",
     "playwright>=1.52",
     "psycopg[binary]>=3.2",
@@ -35,10 +40,15 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+pythonpath = [
+    ".",
+]
 testpaths = [
     "tests",
 ]
 
 [tool.mypy]
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 python_version = "3.12"
 strict = true
