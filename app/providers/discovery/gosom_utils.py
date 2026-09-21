@@ -1,22 +1,12 @@
 from __future__ import annotations
 
-import csv
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from app.providers.discovery.exceptions import BusinessDiscoveryProviderError
-
-
-def read_results(
-    results_file: Path,
-) -> list[Mapping[str, Any]]:
-    with results_file.open(
-        newline="",
-        encoding="utf-8",
-    ) as file:
-        return list(csv.DictReader(file))
+from app.providers.discovery.exceptions import (
+    BusinessDiscoveryProviderError,
+)
 
 
 def parse_location(
@@ -32,35 +22,89 @@ def parse_location(
     ]
 
     if len(parts) >= 2:
-        return parts[0], parts[-1]
+        return (
+            parts[0],
+            parts[-1],
+        )
 
-    return parts[0], None
+    return (
+        parts[0],
+        None,
+    )
 
 
 def deduplicate(
-    businesses: list[Mapping[str, Any]],
-) -> list[Mapping[str, Any]]:
-    seen: set[str] = set()
-    result: list[Mapping[str, Any]] = []
+    businesses: list[
+        Mapping[str, Any]
+    ],
+) -> list[
+    Mapping[str, Any]
+]:
+    """
+    Deduplicate repeated Google Maps listings from Gosom.
+
+    Provider-level identity should use Google Maps identifiers.
+
+    Website/domain is deliberately NOT used here because multiple
+    legitimate Maps listings may share the same company website.
+    """
+
+    seen_ids: set[str] = set()
+
+    result: list[
+        Mapping[str, Any]
+    ] = []
 
     for business in businesses:
-        place_id = optional_text(
-            business.get("place_id")
-            or business.get("cid")
-            or business.get("link")
+        external_id = extract_external_id(
+            business
         )
 
-        if place_id is None:
-            result.append(business)
+        if (
+            external_id is not None
+            and external_id in seen_ids
+        ):
             continue
 
-        if place_id in seen:
-            continue
+        if external_id is not None:
+            seen_ids.add(
+                external_id
+            )
 
-        seen.add(place_id)
-        result.append(business)
+        result.append(
+            business
+        )
 
     return result
+
+
+def extract_external_id(
+    business: Mapping[str, Any],
+) -> str | None:
+    """
+    Return the strongest available Google Maps identity.
+
+    Preference:
+        place_id
+        cid
+        data_id
+
+    `link` is not used as an identity fallback.
+    """
+
+    for field in (
+        "place_id",
+        "cid",
+        "data_id",
+    ):
+        value = optional_text(
+            business.get(field)
+        )
+
+        if value is not None:
+            return value
+
+    return None
 
 
 def extract_domain(
@@ -69,15 +113,28 @@ def extract_domain(
     if not value:
         return None
 
-    parsed = urlparse(value)
+    value = value.strip()
+
+    if not value:
+        return None
+
+    if "://" not in value:
+        value = f"https://{value}"
+
+    parsed = urlparse(
+        value
+    )
 
     hostname = parsed.hostname
+
     if not hostname:
         return None
 
     hostname = hostname.lower()
 
-    if hostname.startswith("www."):
+    if hostname.startswith(
+        "www."
+    ):
         hostname = hostname[4:]
 
     return hostname
@@ -89,20 +146,28 @@ def optional_text(
     if value is None:
         return None
 
-    text = str(value).strip()
+    text = str(
+        value
+    ).strip()
 
-    return text or None
+    return (
+        text
+        or None
+    )
 
 
 def required_text(
     value: object,
     field_name: str,
 ) -> str:
-    text = optional_text(value)
+    text = optional_text(
+        value
+    )
 
     if text is None:
         raise BusinessDiscoveryProviderError(
-            f"Missing required discovery field: {field_name}"
+            "Missing required discovery field: "
+            f"{field_name}"
         )
 
     return text

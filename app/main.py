@@ -1,120 +1,162 @@
+from __future__ import annotations
+
 import argparse
 import asyncio
 
-from app.core.database.session import SessionFactory
-from app.core.logging import configure_logging, get_logger
-from app.models.schemas import DiscoveryQuery
-from app.pipelines.common import run_business_discovery_pipeline
-from app.providers.discovery import GosomGoogleMapsDiscoveryProvider
+from app.cli import (
+    build_discovery_parser,
+    build_webartsy_existing_parser,
+    build_webartsy_parser,
+    build_webartsy_saved_parser,
+    build_email_send_parser,
+    run_email_send,
+    run_discovery,
+    run_webartsy,
+    run_webartsy_existing,
+    run_webartsy_saved,
+)
+from app.core.logging import configure_logging
 
 
-logger = get_logger(__name__)
-
-
-async def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the Autlead business discovery pipeline."
+        description="Autlead command-line interface.",
     )
 
-    parser.add_argument(
-        "query",
-        help="Business category or search query, e.g. dentists",
+    subparsers = parser.add_subparsers(
+        dest="command",
+        required=True,
     )
 
-    parser.add_argument(
-        "location",
-        help="Geographic area, e.g. Lahore, Pakistan",
+    # ---------------------------------------------------------
+    # Discovery
+    # ---------------------------------------------------------
+
+    discovery_parser = subparsers.add_parser(
+        "discovery",
+        help="Run the business discovery pipeline.",
     )
 
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=10,
-        help="Maximum number of businesses to process.",
+    build_discovery_parser(
+        parser=discovery_parser,
     )
 
-    parser.add_argument(
-        "--proxy",
-        default=None,
-        help="Optional proxy URL for Google Maps extraction.",
-    )
+    # ---------------------------------------------------------
+    # WebArtsy discovery + enrichment
+    # ---------------------------------------------------------
 
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=5,
-        help="Number of extractor workers.",
-    )
-
-    parser.add_argument(
-        "--no-enrich",
-        action="store_true",
-        help="Disable provider enrichment.",
-    )
-
-    parser.add_argument(
-        "--grid-bbox",
-        default=None,
+    webartsy_parser = subparsers.add_parser(
+        "webartsy",
         help=(
-            "Geographic grid bounding box in the format "
-            "minLat,minLon,maxLat,maxLon."
+            "Discover businesses and run the full "
+            "WebArtsy enrichment pipeline."
         ),
     )
 
-    parser.add_argument(
-        "--grid-cell-km",
-        type=float,
-        default=5.0,
-        help="Grid cell size in kilometers.",
+    build_webartsy_parser(
+        parser=webartsy_parser,
     )
 
-    parser.add_argument(
-        "--zoom",
-        type=int,
-        default=15,
-        help="Google Maps zoom level used for grid searches.",
+    # ---------------------------------------------------------
+    # WebArtsy existing PostgreSQL companies
+    # ---------------------------------------------------------
+
+    webartsy_existing_parser = (
+        subparsers.add_parser(
+            "webartsy-existing",
+            help=(
+                "Run WebArtsy enrichment against companies "
+                "already stored in PostgreSQL."
+            ),
+        )
     )
 
+    build_webartsy_existing_parser(
+        parser=webartsy_existing_parser,
+    )
+
+    # ---------------------------------------------------------
+    # WebArtsy saved data export
+    # ---------------------------------------------------------
+
+    webartsy_saved_parser = (
+        subparsers.add_parser(
+            "webartsy-saved",
+            help=(
+                "Export already-saved WebArtsy data "
+                "without calling providers."
+            ),
+        )
+    )
+
+    build_webartsy_saved_parser(
+        parser=webartsy_saved_parser,
+    )
+
+    # ---------------------------------------------------------
+    # Email
+    # ---------------------------------------------------------
+
+    email_send_parser = subparsers.add_parser(
+        "email-send",
+        help=(
+            "Send email to eligible persisted contacts."
+        ),
+    )
+
+    build_email_send_parser(
+        parser=email_send_parser,
+    )
+
+    return parser
+
+
+async def async_main() -> None:
+    parser = build_parser()
     args = parser.parse_args()
 
-    query = DiscoveryQuery(
-        query=args.query,
-        location=args.location,
-        limit=args.limit,
-    )
-
-    provider = GosomGoogleMapsDiscoveryProvider(
-        proxy=args.proxy,
-        concurrency=args.workers,
-        depth=1,
-        zoom=args.zoom,
-        grid_bbox=args.grid_bbox,
-        grid_cell_km=args.grid_cell_km,
-    )
-
-    async with SessionFactory() as session:
-        result = await run_business_discovery_pipeline(
-            provider=provider,
-            query=query,
-            session=session,
+    if args.command == "discovery":
+        await run_discovery(
+            args
         )
+        return
 
-    logger.info(
-        "discovery_pipeline_completed",
-        found=result.found,
-        new=result.new,
-        duplicates=result.duplicates,
-        stored=result.stored,
+    if args.command == "webartsy":
+        await run_webartsy(
+            args
+        )
+        return
+
+    if args.command == "webartsy-existing":
+        await run_webartsy_existing(
+            args
+        )
+        return
+
+    if args.command == "webartsy-saved":
+        await run_webartsy_saved(
+            args
+        )
+        return
+
+    if args.command == "email-send":
+        await run_email_send(
+            args
+        )
+        return
+
+    parser.error(
+        f"Unknown command: {args.command}",
     )
 
-    print(
-        f"Found: {result.found} | "
-        f"New: {result.new} | "
-        f"Duplicates: {result.duplicates} | "
-        f"Stored: {result.stored}"
+
+def main() -> None:
+    configure_logging()
+
+    asyncio.run(
+        async_main()
     )
 
 
 if __name__ == "__main__":
-    configure_logging()
-    asyncio.run(main())
+    main()

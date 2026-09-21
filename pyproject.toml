@@ -12,8 +12,13 @@ dependencies = [
     "alembic>=1.16",
     "asyncpg>=0.30",
     "celery>=5.5",
+    "crawl4ai>=0.9.2",
+    "email-validator>=2.3.0",
     "gmaps-extractor>=2.0.0",
+    "google-genai>=2.20.0",
+    "groq>=1.7.0",
     "httpx>=0.28",
+    "phonenumbers>=9.0.37",
     "playwright>=1.52",
     "psycopg[binary]>=3.2",
     "pydantic>=2.11",
@@ -22,6 +27,7 @@ dependencies = [
     "sqlalchemy>=2.0",
     "structlog>=25.4",
     "tenacity>=9.1",
+    "wappalyzer>=1.0.0",
 ]
 
 [dependency-groups]
@@ -46,9 +52,13 @@ pythonpath = [
 testpaths = [
     "tests",
 ]
+markers = [
+    "integration: tests that use real external services or infrastructure",
+]
 
 [tool.mypy]
-[tool.hatch.build.targets.wheel]
-packages = ["app"]
 python_version = "3.12"
 strict = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

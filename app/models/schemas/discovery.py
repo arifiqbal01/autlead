@@ -5,9 +5,16 @@ from pydantic import BaseModel, Field
 
 
 class DiscoveryQuery(BaseModel):
-    query: str = Field(min_length=1)
+    query: str = Field(
+        min_length=1
+    )
+
     location: str | None = None
-    limit: int = Field(default=50, ge=1, le=500)
+
+    limit: int | None = Field(
+        default=None,
+        ge=1,
+    )
 
 
 class BusinessRecord(BaseModel):

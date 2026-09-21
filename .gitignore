@@ -37,6 +37,9 @@ logs/
 exports/*
 !exports/.gitkeep
 
+# Runtime discovery data
+/data/
+
 # OS
 .DS_Store
 
@@ -50,3 +53,7 @@ celerybeat-schedule
 
 # Local database/data
 *.sqlite3
+
+
+# Node dependencies
+node_modules/
