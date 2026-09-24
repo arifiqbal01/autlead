@@ -1,4 +1,4 @@
-# app/policies/qualification/email.py
+# app/policies/qualification/outreach.py
 
 from __future__ import annotations
 
@@ -53,16 +53,16 @@ def evaluate_email_qualification(
     assessment: EmailVerificationAssessment,
 ) -> EmailQualificationDecision:
     """
-    Apply Autlead's email qualification policy.
+    Apply Autlead's outreach qualification policy.
 
     The verification provider supplies technical evidence about
     syntax, DNS/MX, SMTP, domain type, and deliverability.
 
-    This function determines whether Autlead accepts the email
+    This function determines whether Autlead accepts the outreach
     address for downstream use.
 
     Network uncertainty such as greylisting, SMTP blocking, or
-    timeouts must not be treated as proof that an email is invalid.
+    timeouts must not be treated as proof that an outreach is invalid.
     """
 
     confidence = max(
@@ -75,7 +75,7 @@ def evaluate_email_qualification(
             is_qualified=False,
             status=assessment.status,
             confidence=confidence,
-            reason="Verifier marked the email as invalid.",
+            reason="Verifier marked the outreach as invalid.",
         )
 
     if assessment.status == "undeliverable":
@@ -99,7 +99,7 @@ def evaluate_email_qualification(
             is_qualified=False,
             status=assessment.status,
             confidence=confidence,
-            reason="Disposable email addresses are not qualified.",
+            reason="Disposable outreach addresses are not qualified.",
         )
 
     if assessment.status == "deliverable":
@@ -180,7 +180,7 @@ def _risky_reason(
             "individual mailbox."
         )
 
-    return "Verifier classified the email as risky."
+    return "Verifier classified the outreach as risky."
 
 
 def _unknown_reason(

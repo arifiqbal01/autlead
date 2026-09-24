@@ -302,10 +302,10 @@ def build_parser(
     # ---------------------------------------------------------
 
     parser.add_argument(
-        "--has-email",
+        "--has-outreach",
         action="store_true",
         help=(
-            "Only export companies with at least one email."
+            "Only export companies with at least one outreach."
         ),
     )
 

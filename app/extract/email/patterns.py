@@ -14,7 +14,7 @@ def generate_person_email_candidates(
     limit: int = DEFAULT_EMAIL_PATTERN_LIMIT,
 ) -> list[str]:
     """
-    Generate deterministic email candidates from a person's name
+    Generate deterministic outreach candidates from a person's name
     and a company domain.
 
     This function only generates candidates. It does not perform
@@ -162,7 +162,7 @@ def _normalize_name_parts(
     name: str,
 ) -> list[str]:
     """
-    Normalize a human name into ASCII-safe email components.
+    Normalize a human name into ASCII-safe outreach components.
 
     Titles and punctuation are removed conservatively.
 

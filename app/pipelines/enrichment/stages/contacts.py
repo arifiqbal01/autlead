@@ -284,7 +284,7 @@ def _normalize_contact_value(
 ) -> str | None:
     """Normalize one contact according to its contact kind."""
 
-    if kind == "email":
+    if kind == "outreach":
         return normalize_email(
             value
         )
@@ -318,7 +318,7 @@ def _append_contact_value(
     value = evidence.value
     kind = evidence.kind
 
-    if kind == "email":
+    if kind == "outreach":
         result.emails.append(
             value
         )

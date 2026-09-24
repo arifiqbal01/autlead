@@ -18,7 +18,7 @@ from app.transform.normalization.phone import normalize_phone
 async def test_contact_extraction_from_real_websites() -> None:
     """
     Discover real businesses, crawl their websites, extract contacts,
-    and apply country-aware phone and email normalization.
+    and apply country-aware phone and outreach normalization.
 
     Extraction produces raw contact candidates.
 
@@ -26,7 +26,7 @@ async def test_contact_extraction_from_real_websites() -> None:
         - normalizes emails
         - normalizes Pakistani phones to E.164
 
-    This test does not verify whether email mailboxes actually exist.
+    This test does not verify whether outreach mailboxes actually exist.
     """
 
     discovery_query = DiscoveryQuery(
@@ -274,7 +274,7 @@ async def test_contact_extraction_from_real_websites() -> None:
             result.emails,
         )
 
-        # Every normalized email must originate from an extracted email.
+        # Every normalized outreach must originate from an extracted outreach.
         assert set(normalized_emails) <= set(result.emails)
 
         # ---------------------------------------------------------
@@ -337,10 +337,10 @@ async def test_contact_extraction_from_real_websites() -> None:
             assert str(evidence.source_url) == str(content.url)
 
         evidence_by_kind = {
-            "email": {
+            "outreach": {
                 evidence.value
                 for evidence in result.evidence
-                if evidence.kind == "email"
+                if evidence.kind == "outreach"
             },
             "phone": {
                 evidence.value
@@ -349,7 +349,7 @@ async def test_contact_extraction_from_real_websites() -> None:
             },
         }
 
-        assert set(result.emails) <= evidence_by_kind["email"]
+        assert set(result.emails) <= evidence_by_kind["outreach"]
         assert set(result.phones) <= evidence_by_kind["phone"]
 
     # -------------------------------------------------------------

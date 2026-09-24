@@ -21,9 +21,9 @@ def extract_emails(
     mailto_links: Iterable[str] = (),
 ) -> list[str]:
     """
-    Extract email candidates from website content.
+    Extract outreach candidates from website content.
 
-    Extraction identifies plausible email-shaped values only.
+    Extraction identifies plausible outreach-shaped values only.
     Canonical validation and classification belong to the
     transform/normalization layer.
     """

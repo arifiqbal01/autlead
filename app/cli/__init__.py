@@ -4,7 +4,7 @@ from app.cli.acquisition import (
     build_parser as build_acquisition_parser,
     run as run_acquisition,
 )
-from app.cli.email_send import (
+from app.cli.outreach import (
     build_parser as build_email_send_parser,
     run as run_email_send,
 )

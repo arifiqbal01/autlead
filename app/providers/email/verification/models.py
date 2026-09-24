@@ -1,4 +1,4 @@
-# app/providers/email/verification/models.py
+# app/providers/outreach/verification/models.py
 
 from __future__ import annotations
 

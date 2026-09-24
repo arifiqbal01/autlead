@@ -2,7 +2,7 @@ from app.core.exceptions.base import AutleadError
 
 
 class MrEmailCheckerError(AutleadError):
-    """Base mr-email-checker provider error."""
+    """Base mr-outreach-checker provider error."""
 
 
 class MrEmailCheckerTimeoutError(

@@ -57,40 +57,34 @@ The Autlead data model and business logic are not tied to it.
 
 Architecture
 
-Autlead is a modular monolith with asynchronous workers.
+Autlead is a modular monolith organized around three independent generic flows:
 
-                         AUTLEAD
-                            │
-              ┌─────────────┴─────────────┐
-              │                           │
-           WebArtsy                    Autply
-           Pipeline                   Pipeline
-              │                           │
-              └─────────────┬─────────────┘
-                            │
-                       Shared ETL
-                            │
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-      Extract            Transform             Load
-        │                   │                   │
-        │          ┌────────┼─────────┐         │
-        │          │        │         │         │
-        │      Normalize  Analyze   Score        │
-        │          │        │         │          │
-        └──────────┴────────┴─────────┴──────────┘
-                            │
-                       PostgreSQL
-                            │
-                     Celery + Redis
-                            │
-                      External Providers
+    Acquisition
+        ↓
+    PostgreSQL
+        ↓
+    Enrichment
+        ↓
+    PostgreSQL
+        ↓
+    Outreach
+
+PostgreSQL is the source of truth and the durable boundary between flows.
+
+The intended application entry points are:
+
+    run_acquisition(...)
+    run_enrichment(...)
+    run_outreach(...)
+
+The flows are not product-specific. WebArtsy and Autply reuse acquisition and enrichment infrastructure while keeping product-specific signals, scoring, qualification, intelligence, messaging, and outreach strategy separate.
+
 Architectural principles
 ETL is the primary organization model.
 External providers are replaceable.
 Protocols define capabilities, not implementations.
 PostgreSQL is the source of truth.
-Celery and Redis handle asynchronous execution.
+Asynchronous infrastructure such as Celery and Redis should be introduced only when demonstrated workload requirements justify it.
 Workers execute work; they do not contain business logic.
 Important conclusions must be backed by evidence.
 Configuration and abstractions are added only when required.
@@ -122,106 +116,45 @@ Ruff
 Mypy
 Pre-commit
 Project Structure
-autlead/
-│   │   ├── deduplication/
-│   │   ├── entity_resolution/
-│   │   ├── analysis/
-│   │   ├── enrichment/
-│   │   ├── signal_extraction/
-│   │   ├── scoring/
-│   │   └── qualification/
-│   │
-│   ├── load/
-│   │   ├── postgres/
-│   │   ├── events/
-│   │   ├── exports/
-│   │   └── webhooks/
-│   │
-│   ├── intelligence/
-│   │   ├── rules/
-│   │   ├── heuristics/
-│   │   ├── scoring/
-│   │   ├── reasoning/
-│   │   ├── personalization/
-│   │   ├── prompts/
-│   │   ├── schemas/
-│   │   └── llm/
-│   │
-│   ├── providers/
-│   │   ├── discovery/
-│   │   ├── search/
-│   │   ├── crawling/
-│   │   ├── technology/
-│   │   ├── contacts/
-│   │   ├── verification/
-│   │   ├── llm/
-│   │   ├── email/
-│   │   └── reviews/
-│   │
-│   ├── pipelines/
-│   │   ├── common/
-│   │   ├── webartsy/
-│   │   └── autply/
-│   │
-│   ├── state/
-│   │   ├── pipeline.py
-│   │   ├── checkpoints.py
-│   │   ├── transitions.py
-│   │   ├── retries.py
-│   │   ├── locks.py
-│   │   └── recovery.py
-│   │
-│   ├── events/
-│   ├── policies/
-│   └── notifications/
-│
-├── workers/
-│   ├── celery_app.py
-│   ├── queues.py
-│   ├── routing.py
-│   ├── schedules.py
-│   └── tasks/
-│
-├── bootstrap/
-│
-├── knowledge/
-│   ├── webartsy/
-│   ├── autply/
-│   └── system/
-│
-├── migrations/
-│   └── versions/
-│
-├── scripts/
-├── exports/
-├── logs/
-│
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   ├── contract/
-│   └── e2e/
-│
-├── .github/
-│   └── workflows/
-│
-├── main.py
-├── pyproject.toml
-├── alembic.ini
-├── docker-compose.yml
-├── .env.example
-└── README.md
 
-The structure is intentionally modular, but the project avoids unnecessary layers such as a generic ports/ directory, excessive factories, or one-file-per-abstraction.
+The current pipeline structure is intentionally explicit:
 
-Protocols live close to the capability they define.
+    app/
+    ├── cli/
+    │   ├── acquisition.py
+    │   └── enrichment.py
+    ├── pipelines/
+    │   ├── acquisition/
+    │   │   ├── business_discovery.py
+    │   │   ├── models.py
+    │   │   └── pipeline.py
+    │   └── enrichment/
+    │       ├── core/
+    │       │   ├── pipeline.py
+    │       │   ├── company.py
+    │       │   ├── lifecycle.py
+    │       │   ├── models.py
+    │       │   └── work_items.py
+    │       └── stages/
+    │           ├── homepage.py
+    │           ├── business_pages.py
+    │           ├── technology_detection.py
+    │           ├── website_performance.py
+    │           ├── contacts.py
+    │           ├── people.py
+    │           └── person_email.py
+    ├── providers/
+    ├── policies/
+    ├── state/
+    ├── models/
+    ├── load/
+    ├── extract/
+    └── transform/
 
-For example:
+Pipeline-specific logic should not be hidden in a generic `pipelines/common/` package. Truly generic execution infrastructure may remain shared.
 
-providers/
-└── discovery/
-    ├── protocol.py
-    └── google_maps.py
+Protocols live close to the capability they define. Avoid generic registries, excessive factories, and one-file-per-abstraction.
+
 ETL Pipeline
 
 The general pipeline is:
@@ -359,6 +292,101 @@ mobile performance = 32
 poor_mobile_performance
 
 Signals provide the foundation for lead scoring and intelligence.
+
+Current Operational Flows
+
+Acquisition
+
+    DiscoveryQuery
+        ↓
+    BusinessDiscoveryProvider
+        ↓
+    Discover
+        ↓
+    Normalize
+        ↓
+    Deduplicate
+        ↓
+    Persist Company / Source / SourceRecord
+        ↓
+    Commit
+        ↓
+    STOP
+
+Acquisition is independently runnable with the `acquisition` CLI command. It does not crawl websites, enrich contacts/people, qualify leads, or perform outreach.
+
+Enrichment
+
+    Persisted Company
+        ↓
+    Technology Detection
+        ↓
+    Performance / SEO
+        ↓
+    Homepage Analysis
+        ↓
+    Business Page Collection
+        ↓
+    Contact Analysis
+        ↓
+    People Analysis / Persistence
+        ↓
+    Person Email Discovery / Verification
+        ↓
+    PostgreSQL
+
+Enrichment is independently runnable with the `enrichment` CLI command.
+
+Enrichment uses persisted checkpoints so successful stages do not need to be repeated unnecessarily. Normal stages mark running, execute, and mark completed with transaction boundaries around state changes. Failures are rolled back, recorded as failed, and re-raised.
+
+Homepage and business-page processing are rehydrating stages: downstream work still needs page content even when their enrichment checkpoint is complete.
+
+Website crawl freshness is separate from enrichment checkpoint completion. A completed crawl may be started again after its retention period expires:
+
+    COMPLETED -> RUNNING -> COMPLETED
+
+This supports retention-based refresh without rediscovering the company.
+
+People enrichment combines deterministic extraction, optional LLM refinement, policy classification, deterministic normalization/entity resolution/ranking, and persistence. LLM failure falls back to deterministic candidates.
+
+Person-email enrichment loads persisted people for a company, generates candidate addresses, verifies them sequentially, persists verification evidence, and selects the first qualified email.
+
+Outreach
+
+Outreach remains the next major generic flow:
+
+    Enriched Company
+        ↓
+    Campaign Candidate
+        ↓
+    Suitable Contact
+        ↓
+    Generate / Select Message
+        ↓
+    Send
+        ↓
+    Persist Status
+
+Initial campaign persistence should remain minimal:
+
+    Campaign
+        id
+        name
+        status
+        created_at
+        updated_at
+
+    CampaignLead
+        id
+        campaign_id
+        company_id
+        status
+        created_at
+        updated_at
+
+Initial CampaignLead statuses are `pending`, `sent`, and `failed`.
+
+Do not add campaign-message, event, scheduling, template, or workflow models until real requirements justify them.
 
 WebArtsy Pipeline
 
@@ -500,7 +528,9 @@ This allows product strategy and messaging to evolve without changing the core p
 
 Async Processing
 
-Celery is introduced for expensive or long-running operations.
+This remains a future scaling option rather than a requirement of the current three-flow architecture.
+
+Celery may be introduced for expensive or long-running operations when real workloads justify it.
 
 Potential queues:
 
@@ -702,38 +732,58 @@ uv run mypy app
 uv run pytest
 Current Status
 
-Autlead is currently in the foundation/setup phase.
+Autlead is beyond the foundation/setup phase.
 
-Completed:
+Completed or working:
 
-Python 3.12 environment
-uv
-Project structure
-Pydantic
-SQLAlchemy
-Alembic
-PostgreSQL tooling
-Celery dependencies
-Redis dependencies
-Playwright
-Pytest
-Ruff
-Mypy
-Pre-commit
+- Python 3.12 / uv project foundation.
+- PostgreSQL, SQLAlchemy, Alembic, and persistence infrastructure.
+- Company/source persistence and provenance.
+- Business discovery provider integration.
+- Acquisition flow with normalization and deduplication.
+- Generic acquisition CLI.
+- Website crawling with Crawl4AI.
+- Technology detection.
+- Website performance / SEO analysis.
+- Homepage and business-page crawling.
+- Contact extraction.
+- People extraction, refinement, classification, and persistence.
+- Person-email candidate generation and verification.
+- Persisted enrichment stage checkpoints and retry/resume behavior.
+- Generic enrichment CLI.
+- Resend email sending has been tested successfully.
+- A single-company end-to-end enrichment run completed successfully.
 
-Next:
+Current scaling issues identified by the single-company enrichment test:
 
-PostgreSQL connection
+1. LLM refinement payloads must be bounded. A request can exceed the configured provider token/rate limit; an inherently oversized request should be reduced rather than repeatedly retried.
+2. Person-email target selection must be validated before a large run. The stage currently operates on persisted people for the company, which can include historical people in addition to people found in the current run.
+
+Immediate next work:
+
+    Finish generic enrichment refactor
         ↓
-SQLAlchemy foundation
+    Validate persisted-person selection
         ↓
-Alembic
+    Bound LLM refinement payloads
         ↓
-Company model
+    Run controlled multi-company enrichment
         ↓
-Source model
+    Validate persisted results and provider cost/rate behavior
         ↓
-First discovery provider
+    Build minimal Campaign / CampaignLead outreach flow
+
+Current refactoring rules:
+
+- Refactor one flow at a time.
+- Keep PostgreSQL as the source of truth and boundary between flows.
+- Do not change the database schema merely to reorganize pipeline code.
+- Preserve existing persistence, transaction, and state semantics during structural refactors.
+- Keep providers free of product scoring, qualification, messaging, and outreach decisions.
+- Keep orchestration explicit and readable.
+- Avoid generic workflow engines, registries, premature abstractions, Celery/Redis expansion, or other infrastructure without demonstrated need.
+- Keep generic acquisition/enrichment separate from WebArtsy/Autply strategy.
+
 Long-Term Vision
 
 Autlead should eventually become a reusable lead intelligence platform where adding a new data source or product does not require rebuilding the system.

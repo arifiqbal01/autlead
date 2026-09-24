@@ -1,4 +1,4 @@
-# app/policies/outreach/email.py
+# app/policies/outreach/outreach.py
 
 from __future__ import annotations
 

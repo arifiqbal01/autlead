@@ -29,7 +29,7 @@ async def load_person_email_observation(
     observed_at: datetime | None = None,
 ) -> PersonEmailObservation:
     """
-    Persist a historical person-email discovery observation.
+    Persist a historical person-outreach discovery observation.
 
     Email discovery results are stored as observations because they
     may come from multiple providers and confidence or verification

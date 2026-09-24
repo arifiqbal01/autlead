@@ -1,4 +1,4 @@
-# app/providers/email/sending/resend.py
+# app/providers/outreach/sending/resend.py
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ class ResendEmailSendingProvider:
     Email sending provider backed by the Resend API.
 
     This provider is responsible only for communicating with Resend
-    and converting its response into Autlead's email sending schema.
+    and converting its response into Autlead's outreach sending schema.
 
     Persistence, outreach decisions, and delivery-event processing
     belong outside the provider.
@@ -46,7 +46,7 @@ class ResendEmailSendingProvider:
         request: EmailSendRequest,
     ) -> EmailSendResult:
         """
-        Send an email through Resend.
+        Send an outreach through Resend.
 
         A successful result means Resend accepted the send request.
         It does not necessarily mean the recipient mail server

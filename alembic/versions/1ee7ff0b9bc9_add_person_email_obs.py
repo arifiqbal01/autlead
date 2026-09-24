@@ -1,4 +1,4 @@
-"""add person email obs
+"""add person outreach obs
 
 Revision ID: 1ee7ff0b9bc9
 Revises: 6ecf277c74ba
@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column('company_id', sa.Integer(), nullable=False),
     sa.Column('source_id', sa.Integer(), nullable=True),
     sa.Column('provider_name', sa.String(length=100), nullable=False),
-    sa.Column('email', sa.String(length=320), nullable=False),
+    sa.Column('outreach', sa.String(length=320), nullable=False),
     sa.Column('normalized_email', sa.String(length=320), nullable=False),
     sa.Column('confidence', sa.Float(), nullable=True),
     sa.Column('verification_method', sa.String(length=100), nullable=True),

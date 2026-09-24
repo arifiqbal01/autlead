@@ -20,7 +20,7 @@ class WebArtsyExportFilters:
 
     Filters compose with AND semantics. For example, supplying
     ``has_website=True`` and ``has_email=True`` exports companies that
-    have both a website and at least one persisted email observation.
+    have both a website and at least one persisted outreach observation.
     """
 
     country: str | None = None
@@ -227,7 +227,7 @@ def apply_webartsy_export_filters(
 
     if filters.has_email:
         query = query.where(
-            _contact_kind_exists("email")
+            _contact_kind_exists("outreach")
         )
 
     if filters.has_phone:

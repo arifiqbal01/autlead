@@ -1,3 +1,235 @@
+Autlead --- Revised Project Execution Plan
+Current Implementation Update --- 24 September 2026
+This plan began as an incremental roadmap. Autlead has now progressed
+beyond the original MVP-0 boundary, so the sections below should be read
+as the development sequence that led to the current system rather than
+as a statement that enrichment, checkpoints, retries, LLM use, or
+outreach infrastructure do not yet exist.
+Current architecture
+Autlead is being organized around three independent generic flows:
+Acquisition
+    ↓
+PostgreSQL
+    ↓
+Enrichment
+    ↓
+PostgreSQL
+    ↓
+Outreach
+PostgreSQL is the durable source of truth and the boundary between
+flows. One flow should not call the next simply to continue processing.
+The intended entry points are:
+run_acquisition(...)
+run_enrichment(...)
+run_outreach(...)
+The flows are generic Autlead capabilities. Product-specific scoring,
+qualification, intelligence, messaging, and outreach strategy remain
+separate.
+Current status
+Acquisition --- working
+The acquisition flow now covers:
+DiscoveryQuery
+    ↓
+BusinessDiscoveryProvider
+    ↓
+discover
+    ↓
+normalize
+    ↓
+deduplicate
+    ↓
+persist Company / Source / SourceRecord
+    ↓
+commit
+    ↓
+STOP
+The generic CLI command is:
+python -m app.main acquisition ...
+Acquisition intentionally stops after company/source persistence.
+Website crawling, technology detection, contacts, people, person email
+enrichment, qualification, and outreach do not belong in this flow.
+Enrichment --- working and under active refactor/testing
+Enrichment starts from companies already persisted in PostgreSQL:
+Persisted Company
+    ↓
+Technology Detection
+    ↓
+Performance / SEO
+    ↓
+Homepage Analysis
+    ↓
+Business Page Collection
+    ↓
+Contact Analysis
+    ↓
+People Analysis / Persistence
+    ↓
+Person Email Discovery / Verification
+    ↓
+PostgreSQL
+The generic CLI command is:
+python -m app.main enrichment ...
+The current enrichment structure is:
+app/pipelines/enrichment/
+├── core/
+│   ├── pipeline.py
+│   ├── company.py
+│   ├── lifecycle.py
+│   ├── models.py
+│   └── work_items.py
+└── stages/
+    ├── homepage.py
+    ├── business_pages.py
+    ├── technology_detection.py
+    ├── website_performance.py
+    ├── contacts.py
+    ├── people.py
+    └── person_email.py
+core/ owns execution/orchestration. stages/ owns enrichment
+capabilities.
+Enrichment is independently runnable and uses persisted stage state to
+resume work. The refactor preserves the existing database schema,
+persisted state values, and transaction behavior.
+A single-company end-to-end enrichment test now completes successfully.
+The test refreshed an expired homepage crawl, crawled a selected
+business page, extracted/persisted people, ran person-email
+verification, and completed without a pipeline failure.
+Enrichment checkpoint behavior
+Normal checkpointed stages follow:
+should run?
+    ↓
+mark running
+    ↓
+commit
+    ↓
+execute
+    ↓
+mark completed
+    ↓
+commit
+On failure:
+rollback
+    ↓
+mark failed
+    ↓
+commit
+    ↓
+re-raise
+Homepage and business-page processing are special because downstream
+stages still need page content when their enrichment checkpoint is
+already complete. They can therefore rehydrate persisted crawl data.
+Website crawl freshness is independent from the enrichment checkpoint. A
+previously completed crawl may be refreshed when retention expires:
+COMPLETED
+    ↓
+retention expired
+    ↓
+RUNNING
+    ↓
+COMPLETED
+The crawl state machine therefore permits COMPLETED -> RUNNING.
+Current people and email behavior
+People enrichment currently combines:
+deterministic extraction
+    ↓
+optional LLM refinement
+    ↓
+policy classification
+    ↓
+deterministic normalization / entity resolution / ranking
+    ↓
+Person + PersonObservation persistence
+LLM failure does not discard deterministic candidates.
+Person-email enrichment operates on persisted people for the company:
+persisted people
+    ↓
+candidate generation
+    ↓
+sequential verification
+    ↓
+qualification policy
+    ↓
+verification evidence persistence
+    ↓
+first qualified email wins
+Before a large enrichment run, two operational issues should be
+addressed:
+1. Bound the content sent to the LLM so requests do not exceed provider
+   token/rate limits. An oversized request should not consume repeated
+   retries when reducing the payload is required.
+2. Verify that person-email target loading intentionally includes all
+   appropriate persisted people for the company, including historical
+   observations, before spending verification calls at scale.
+Outreach --- next major flow
+Outreach remains a separate flow consuming persisted enriched companies.
+Initial direction:
+Enriched Company
+    ↓
+Campaign Candidate
+    ↓
+Suitable Contact
+    ↓
+Generate / Select Message
+    ↓
+Send
+    ↓
+Persist Status
+Campaign persistence should remain minimal initially:
+Campaign
+    id
+    name
+    status
+    created_at
+    updated_at
+
+CampaignLead
+    id
+    campaign_id
+    company_id
+    status
+    created_at
+    updated_at
+Initial CampaignLead statuses:
+pending
+sent
+failed
+Do not add campaign-message, event, scheduling, template, or workflow
+models until real requirements require them.
+Current refactoring rules
+1. Refactor one flow at a time.
+2. Keep PostgreSQL as the source of truth and durable boundary between
+   flows.
+3. Do not change persistence models or require migrations merely to
+   reorganize pipeline code.
+4. Preserve transaction and state behavior during structural refactors.
+5. Keep external capabilities behind providers.
+6. Keep product scoring, qualification, messaging, and outreach
+   decisions out of providers.
+7. Avoid generic registries, workflow engines, event buses, and
+   premature abstractions.
+8. Keep pipeline orchestration explicit and readable.
+9. Move shared enrichment behavior into generic enrichment stages
+   rather than product-specific copies.
+10. Add infrastructure only when demonstrated workload requirements
+    justify it.
+Immediate execution priority
+The immediate sequence is now:
+1. Finish generic enrichment refactor
+    ↓
+2. Validate person selection / historical people behavior
+    ↓
+3. Reduce and bound LLM refinement payloads
+    ↓
+4. Run a controlled multi-company enrichment batch
+    ↓
+5. Validate persisted enrichment results and provider cost/rate behavior
+    ↓
+6. Build the minimal outreach/campaign flow
+Original Incremental Execution Plan
+The remainder of this document preserves the original staged roadmap.
+Statements such as "do not add checkpoints yet" describe the earlier
+phase in which those capabilities were intentionally deferred; they are
+not current implementation-state claims.
 Autlead — Revised Project Execution Plan
 1. Immediate Goal
 

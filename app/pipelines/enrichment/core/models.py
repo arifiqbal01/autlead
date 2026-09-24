@@ -50,7 +50,7 @@ class CompanyEnrichmentResult:
             ↓
         people
             ↓
-        person email verification
+        person outreach verification
     """
 
     company_id: int

@@ -21,7 +21,7 @@ class WebsiteContactExtractor:
     Extract contact information from already-crawled website pages.
 
     This class orchestrates the contact-specific extractors. It does not
-    contain email, phone, HTML, or social parsing rules.
+    contain outreach, phone, HTML, or social parsing rules.
     """
 
     def extract(
@@ -78,7 +78,7 @@ class WebsiteContactExtractor:
                 ContactEvidence(
                     value=email,
                     source_url=source_url,
-                    kind="email",
+                    kind="outreach",
                 )
             )
 

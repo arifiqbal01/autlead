@@ -139,7 +139,7 @@ async def export_webartsy_leads(
         "performance_score",
         "seo_score",
 
-        "email",
+        "outreach",
         "phone",
 
         "linkedin_company_urls",
@@ -776,7 +776,7 @@ def _build_contact_data(
         str,
         list[str],
     ] = {
-        "email": [],
+        "outreach": [],
         "phone": [],
 
         "linkedin_company": [],
@@ -831,7 +831,7 @@ def _build_contact_data(
 
     return _ContactExportData(
         email=join(
-            "email"
+            "outreach"
         ),
 
         phone=join(

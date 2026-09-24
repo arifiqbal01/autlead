@@ -1,4 +1,4 @@
-"""make person email pattern inferred boolean
+"""make person outreach pattern inferred boolean
 
 Revision ID: 30d3155efc9e
 Revises: 1ee7ff0b9bc9

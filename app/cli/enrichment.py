@@ -146,12 +146,12 @@ def build_parser(
     )
 
     parser.add_argument(
-        "--person-email-limit",
+        "--person-outreach-limit",
         type=int,
         default=None,
         help=(
             "Maximum number of persisted people to process "
-            "for email enrichment per company. "
+            "for outreach enrichment per company. "
             "Defaults to all."
         ),
     )

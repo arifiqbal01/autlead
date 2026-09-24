@@ -24,7 +24,7 @@ async def test_analyze_contacts_extracts_normalizes_and_persists() -> None:
             ContactEvidence(
                 value="INFO@Example.com",
                 source_url=HttpUrl("https://example.com/contact"),
-                kind="email",
+                kind="outreach",
             ),
             ContactEvidence(
                 value="0333 2142260",
@@ -85,7 +85,7 @@ async def test_analyze_contacts_extracts_normalizes_and_persists() -> None:
     assert calls[0].kwargs["company_id"] == 1
     assert calls[0].kwargs["source_id"] == 10
     assert calls[0].kwargs["provider_name"] == "website"
-    assert calls[0].kwargs["kind"] == "email"
+    assert calls[0].kwargs["kind"] == "outreach"
     assert calls[0].kwargs["value"] == "INFO@Example.com"
     assert calls[0].kwargs["normalized_value"] == "info@example.com"
     assert calls[0].kwargs["source_url"] == (
@@ -126,9 +126,9 @@ async def test_analyze_contacts_discards_invalid_contacts() -> None:
     extracted = ContactExtractionResult(
         evidence=[
             ContactEvidence(
-                value="not-an-email",
+                value="not-an-outreach",
                 source_url=HttpUrl("https://example.com/contact"),
-                kind="email",
+                kind="outreach",
             ),
             ContactEvidence(
                 value="not-a-phone",
@@ -182,7 +182,7 @@ async def test_analyze_contacts_commits_after_persistence() -> None:
             ContactEvidence(
                 value="info@example.com",
                 source_url=HttpUrl("https://example.com/contact"),
-                kind="email",
+                kind="outreach",
             ),
         ],
     )

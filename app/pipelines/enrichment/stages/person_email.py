@@ -58,7 +58,7 @@ class PersistedPerson:
 @dataclass(frozen=True, slots=True)
 class PersonEmailTarget:
     """
-    One persisted person eligible for email verification/enrichment.
+    One persisted person eligible for outreach verification/enrichment.
     """
 
     person_id: int
@@ -102,7 +102,7 @@ class PersonEmailResult:
 @dataclass(frozen=True, slots=True)
 class PersonEmailAnalysisResult:
     """
-    Result of person-email enrichment.
+    Result of person-outreach enrichment.
     """
 
     people: list[PersonEmailResult]
@@ -133,7 +133,7 @@ async def enrich_person_emails(
     candidate_limit: int = 8,
 ) -> PersonEmailAnalysisResult:
     """
-    Enrich persisted people with verified email addresses.
+    Enrich persisted people with verified outreach addresses.
 
     Flow:
 
@@ -141,7 +141,7 @@ async def enrich_person_emails(
             ↓
         build PersonEmailTarget[]
             ↓
-        existing email?
+        existing outreach?
             ├── verified already → skip
             └── otherwise verify
             ↓
@@ -153,7 +153,7 @@ async def enrich_person_emails(
             ↓
         persist verification evidence
             ↓
-        assign first qualified email to Person.email
+        assign first qualified outreach to Person.outreach
 
     Email verification applies independently of decision-maker
     classification.
@@ -215,7 +215,7 @@ async def analyze_person_emails(
     candidate_limit: int = 8,
 ) -> PersonEmailAnalysisResult:
     """
-    Find and verify a usable email for persisted people.
+    Find and verify a usable outreach for persisted people.
 
     Existing addresses are considered first. If no qualified existing
     address is available, deterministic name/domain candidates are
@@ -282,7 +282,7 @@ async def analyze_person_emails(
         )
 
         # ------------------------------------------------------------------
-        # 1. Existing email
+        # 1. Existing outreach
         # ------------------------------------------------------------------
 
         existing_email: str | None = None
@@ -654,7 +654,7 @@ async def _load_people(
     """
     Load persisted people for one company.
 
-    People without an email are intentionally included because deterministic
+    People without an outreach are intentionally included because deterministic
     candidates can be generated from their name and the company domain.
     """
 
@@ -778,7 +778,7 @@ async def _has_verified_email(
     normalized_email: str,
 ) -> bool:
     """
-    Check whether this exact email already has successful verification
+    Check whether this exact outreach already has successful verification
     evidence for this person.
     """
 
@@ -813,7 +813,7 @@ async def _update_person_email(
     email: str,
 ) -> None:
     """
-    Store a qualified email on the persisted Person.
+    Store a qualified outreach on the persisted Person.
 
     Transaction ownership belongs to the caller.
     """
@@ -823,7 +823,7 @@ async def _update_person_email(
             """
             UPDATE public.people
             SET
-                email = :email,
+                outreach = :outreach,
                 updated_at = NOW()
             WHERE id = :person_id
               AND company_id = :company_id
@@ -832,7 +832,7 @@ async def _update_person_email(
         {
             "person_id": person_id,
             "company_id": company_id,
-            "email": email,
+            "outreach": email,
         },
     )
 

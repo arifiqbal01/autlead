@@ -42,11 +42,11 @@ async def test_mr_email_checker_known_webartsy_email() -> None:
         )
     except MrEmailCheckerTimeoutError:
         pytest.skip(
-            "Live mr-email-checker verification timed out."
+            "Live mr-outreach-checker verification timed out."
         )
 
     print()
-    print("email:", result.email)
+    print("outreach:", result.email)
     print("canonical:", result.canonical)
     print("status:", result.status)
     print("valid:", result.valid)
@@ -116,11 +116,11 @@ async def test_mr_email_checker_agroasia_response_parses() -> None:
         )
     except MrEmailCheckerTimeoutError:
         pytest.skip(
-            "Live mr-email-checker verification timed out."
+            "Live mr-outreach-checker verification timed out."
         )
 
     print()
-    print("email:", result.email)
+    print("outreach:", result.email)
     print("canonical:", result.canonical)
     print("status:", result.status)
     print("valid:", result.valid)

@@ -1,4 +1,4 @@
-from app.pipelines.common.workers.worker import (
+from app.pipelines.workers.worker import (
     WorkerFailure,
     WorkerPoolResult,
     WorkerRetryPolicy,

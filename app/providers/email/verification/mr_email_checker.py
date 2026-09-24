@@ -59,7 +59,7 @@ class MrEmailCheckerProvider:
         request: EmailVerificationRequest,
     ) -> EmailVerificationResult:
         payload = {
-            "email": request.email,
+            "outreach": request.email,
             "options": {
                 "smtp": self._smtp_enabled,
                 "smtpFrom": self._smtp_from,
@@ -83,7 +83,7 @@ class MrEmailCheckerProvider:
             )
         except OSError as error:
             raise MrEmailCheckerError(
-                "Failed to start mr-email-checker runner."
+                "Failed to start mr-outreach-checker runner."
             ) from error
 
         try:
@@ -98,7 +98,7 @@ class MrEmailCheckerProvider:
             await process.communicate()
 
             raise MrEmailCheckerTimeoutError(
-                "mr-email-checker runner timed out."
+                "mr-outreach-checker runner timed out."
             ) from error
 
         stderr_text = stderr.decode(
@@ -113,7 +113,7 @@ class MrEmailCheckerProvider:
 
         if process.returncode != 0:
             raise MrEmailCheckerError(
-                "mr-email-checker runner failed"
+                "mr-outreach-checker runner failed"
                 + (
                     f": {stderr_text}"
                     if stderr_text
@@ -123,7 +123,7 @@ class MrEmailCheckerProvider:
 
         if not stdout_text:
             raise MrEmailCheckerParseError(
-                "mr-email-checker returned an empty response."
+                "mr-outreach-checker returned an empty response."
             )
 
         try:
@@ -132,7 +132,7 @@ class MrEmailCheckerProvider:
             )
         except json.JSONDecodeError as error:
             raise MrEmailCheckerParseError(
-                "mr-email-checker returned invalid JSON."
+                "mr-outreach-checker returned invalid JSON."
             ) from error
 
         if not isinstance(
@@ -140,7 +140,7 @@ class MrEmailCheckerProvider:
             dict,
         ):
             raise MrEmailCheckerParseError(
-                "mr-email-checker response must be an object."
+                "mr-outreach-checker response must be an object."
             )
 
         return self._parse_result(
@@ -272,7 +272,7 @@ class MrEmailCheckerProvider:
                     )
 
             return EmailVerificationResult(
-                email=raw["email"],
+                email=raw["outreach"],
                 canonical=raw[
                     "canonical"
                 ],
@@ -290,7 +290,7 @@ class MrEmailCheckerProvider:
 
         except KeyError as error:
             raise MrEmailCheckerParseError(
-                "mr-email-checker response "
+                "mr-outreach-checker response "
                 f"is missing required field: "
                 f"{error.args[0]!r}."
             ) from error
@@ -298,7 +298,7 @@ class MrEmailCheckerProvider:
         except ValidationError as error:
             raise MrEmailCheckerParseError(
                 "Invalid response from "
-                "mr-email-checker: "
+                "mr-outreach-checker: "
                 f"{error}"
             ) from error
 

@@ -77,8 +77,8 @@ def build_parser() -> argparse.ArgumentParser:
     # ---------------------------------------------------------
 
     email_send_parser = subparsers.add_parser(
-        "email-send",
-        help="Send email to eligible persisted contacts.",
+        "outreach-send",
+        help="Send outreach to eligible persisted contacts.",
     )
 
     build_email_send_parser(
@@ -104,7 +104,7 @@ async def async_main() -> None:
         await run_webartsy_saved(args)
         return
 
-    if args.command == "email-send":
+    if args.command == "outreach-send":
         await run_email_send(args)
         return
 

@@ -1,4 +1,4 @@
-"""add email messages
+"""add outreach messages
 
 Revision ID: d750cfce9fa1
 Revises: 30d3155efc9e

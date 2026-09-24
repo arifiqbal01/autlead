@@ -1,8 +1,8 @@
-from app.pipelines.email.candidates import (
+from app.pipelines.outreach.candidates import (
     EmailCandidate,
     get_email_candidates,
 )
-from app.pipelines.email.send import (
+from app.pipelines.outreach.send import (
     send_email,
 )
 

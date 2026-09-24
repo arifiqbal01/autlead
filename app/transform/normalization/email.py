@@ -1,4 +1,4 @@
-# app/transform/normalization/email.py
+# app/transform/normalization/outreach.py
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ ROLE_EMAIL_PREFIXES = frozenset(
 
 @dataclass(frozen=True, slots=True)
 class NormalizedEmail:
-    """Normalized and classified email address."""
+    """Normalized and classified outreach address."""
 
     address: str
     local_part: str
@@ -74,7 +74,7 @@ class NormalizedEmail:
 
 def normalize_email(value: str) -> str | None:
     """
-    Normalize and validate an email address.
+    Normalize and validate an outreach address.
 
     This function performs deterministic normalization only. It does
     not verify whether the mailbox actually exists.
@@ -122,9 +122,9 @@ def normalize_emails(values: list[str] | tuple[str, ...]) -> list[str]:
 
 def parse_email(value: str) -> NormalizedEmail | None:
     """
-    Normalize an email and derive useful deterministic attributes.
+    Normalize an outreach and derive useful deterministic attributes.
 
-    Provider classification is based on a known free-email-provider
+    Provider classification is based on a known free-outreach-provider
     list. Unknown domains remain business/custom domains rather than
     being incorrectly classified.
     """
@@ -149,7 +149,7 @@ def parse_email(value: str) -> NormalizedEmail | None:
 
 
 def email_domain(value: str) -> str | None:
-    """Return the normalized domain portion of an email."""
+    """Return the normalized domain portion of an outreach."""
 
     email = normalize_email(value)
 
@@ -160,7 +160,7 @@ def email_domain(value: str) -> str | None:
 
 
 def email_local_part(value: str) -> str | None:
-    """Return the normalized local portion of an email."""
+    """Return the normalized local portion of an outreach."""
 
     email = normalize_email(value)
 
@@ -171,7 +171,7 @@ def email_local_part(value: str) -> str | None:
 
 
 def is_free_email_provider(value: str) -> bool:
-    """Return whether the email uses a known free email provider."""
+    """Return whether the outreach uses a known free outreach provider."""
 
     domain = email_domain(value)
 
@@ -201,7 +201,7 @@ def is_role_email(value: str) -> bool:
 
 def email_quality(value: str) -> str | None:
     """
-    Return a simple deterministic email quality classification.
+    Return a simple deterministic outreach quality classification.
 
     Values:
         business_role

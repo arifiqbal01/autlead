@@ -13,5 +13,5 @@ class EmailVerificationProvider(Protocol):
         self,
         request: EmailVerificationRequest,
     ) -> EmailVerificationResult:
-        """Verify a known email address."""
+        """Verify a known outreach address."""
         ...

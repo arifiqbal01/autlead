@@ -25,7 +25,7 @@ async def send_email(
     request: EmailSendRequest,
 ) -> EmailMessage:
     """
-    Send one email through the configured provider and persist
+    Send one outreach through the configured provider and persist
     the resulting provider message identifier.
 
     The caller owns the database transaction.

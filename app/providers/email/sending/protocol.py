@@ -10,5 +10,5 @@ class EmailSendingProvider(Protocol):
         self,
         request: EmailSendRequest,
     ) -> EmailSendResult:
-        """Send one email and return the provider result."""
+        """Send one outreach and return the provider result."""
         ...

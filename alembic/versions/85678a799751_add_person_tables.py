@@ -28,7 +28,7 @@ def upgrade() -> None:
     sa.Column('normalized_name', sa.String(length=255), nullable=False),
     sa.Column('title', sa.String(length=255), nullable=True),
     sa.Column('linkedin_url', sa.Text(), nullable=True),
-    sa.Column('email', sa.String(length=320), nullable=True),
+    sa.Column('outreach', sa.String(length=320), nullable=True),
     sa.Column('phone', sa.String(length=50), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),

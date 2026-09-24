@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.core.database.session import SessionFactory
 from app.core.logging import get_logger
 from app.models.persistence import Company
-from app.pipelines.common.workers import (
+from app.pipelines.workers import (
     WorkerRetryPolicy,
     run_worker_pool,
 )

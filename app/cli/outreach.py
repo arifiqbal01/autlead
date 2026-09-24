@@ -11,7 +11,7 @@ from app.core.logging import get_logger
 from app.models.schemas.email_send import (
     EmailSendRequest,
 )
-from app.pipelines.email import (
+from app.pipelines.outreach import (
     get_email_candidates,
     send_email,
 )
@@ -44,7 +44,7 @@ def build_parser(
         type=float,
         default=None,
         help=(
-            "Minimum email verification confidence. "
+            "Minimum outreach verification confidence. "
             "Defaults to EMAIL_MIN_VERIFICATION_CONFIDENCE."
         ),
     )
@@ -78,7 +78,7 @@ def build_parser(
     parser.add_argument(
         "--text",
         required=True,
-        help="Plain-text email body.",
+        help="Plain-text outreach body.",
     )
 
     parser.add_argument(
@@ -86,7 +86,7 @@ def build_parser(
         action="store_true",
         help=(
             "Show selected recipients without sending "
-            "or persisting email messages."
+            "or persisting outreach messages."
         ),
     )
 

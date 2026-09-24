@@ -31,7 +31,7 @@ async def get_email_candidates(
     skip_previously_sent: bool = True,
 ) -> list[EmailCandidate]:
     """
-    Return email candidates eligible for further send-policy
+    Return outreach candidates eligible for further send-policy
     evaluation.
 
     This function performs coarse database filtering only.
