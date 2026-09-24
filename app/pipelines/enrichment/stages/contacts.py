@@ -1,4 +1,4 @@
-# app/pipelines/common/contacts.py
+# app/pipelines/enrichment/contacts.py
 
 from __future__ import annotations
 
@@ -48,8 +48,8 @@ class ContactAnalysisResult:
 
 
 async def analyze_contacts(
-    session: AsyncSession,
     *,
+    session: AsyncSession,
     company_id: int,
     pages: list[WebsiteContent],
     provider_name: str,
@@ -59,9 +59,7 @@ async def analyze_contacts(
 ) -> ContactAnalysisResult:
     """
     Extract, normalize, deduplicate, and persist company-level
-    contact observations from already-crawled website pages.
-
-    This function does not crawl websites.
+    contacts from already-crawled website pages.
 
     Flow:
 
@@ -69,13 +67,15 @@ async def analyze_contacts(
             ↓
         WebsiteContactExtractor
             ↓
-        raw ContactEvidence[]
+        ContactEvidence[]
             ↓
-        deterministic normalization
+        normalization
             ↓
         deduplication
             ↓
         persistence
+
+    This function does not crawl websites.
 
     Transaction ownership belongs to the caller.
     """
@@ -90,9 +90,9 @@ async def analyze_contacts(
         provider=provider_name,
     )
 
-    # =========================================================
-    # 1. Extraction
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Extraction
+    # ------------------------------------------------------------------
 
     extractor = WebsiteContactExtractor()
 
@@ -111,15 +111,13 @@ async def analyze_contacts(
         evidence_found=extracted_count,
     )
 
-    # =========================================================
-    # 2. Normalization + deduplication
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Normalization + deduplication
+    # ------------------------------------------------------------------
 
-    normalized_contacts, discarded_count = (
-        _normalize_result(
-            extracted,
-            phone_region=phone_region,
-        )
+    normalized_contacts, discarded_count = _normalize_result(
+        extracted,
+        phone_region=phone_region,
     )
 
     normalized_count = len(
@@ -134,9 +132,9 @@ async def analyze_contacts(
         discarded=discarded_count,
     )
 
-    # =========================================================
-    # 3. Persistence
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
 
     persisted_count = 0
 
@@ -155,57 +153,55 @@ async def analyze_contacts(
 
         persisted_count += 1
 
-    # =========================================================
-    # 4. Completed
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Completed
+    # ------------------------------------------------------------------
 
-    logger.info(
-        "contact_analysis_completed",
-        company_id=company_id,
-        pages=len(pages),
-        extracted=extracted_count,
-        normalized=normalized_count,
-        discarded=discarded_count,
-        persisted=persisted_count,
-        emails=len(
-            normalized_contacts.emails
-        ),
-        phones=len(
-            normalized_contacts.phones
-        ),
-        linkedin_companies=len(
-            normalized_contacts.linkedin_company_urls
-        ),
-        linkedin_profiles=len(
-            normalized_contacts.linkedin_profile_urls
-        ),
-        facebook=len(
-            normalized_contacts.facebook_urls
-        ),
-        instagram=len(
-            normalized_contacts.instagram_urls
-        ),
-        x=len(
-            normalized_contacts.x_urls
-        ),
-        youtube=len(
-            normalized_contacts.youtube_urls
-        ),
-        github=len(
-            normalized_contacts.github_urls
-        ),
-        tiktok=len(
-            normalized_contacts.tiktok_urls
-        ),
-    )
-
-    return ContactAnalysisResult(
+    result = ContactAnalysisResult(
         contacts=normalized_contacts,
         extracted_count=extracted_count,
         normalized_count=normalized_count,
         discarded_count=discarded_count,
         persisted_count=persisted_count,
     )
+
+    logger.info(
+        "contact_analysis_completed",
+        company_id=company_id,
+        pages=len(pages),
+        extracted=result.extracted_count,
+        normalized=result.normalized_count,
+        discarded=result.discarded_count,
+        persisted=result.persisted_count,
+        emails=len(result.contacts.emails),
+        phones=len(result.contacts.phones),
+        linkedin_companies=len(
+            result.contacts.linkedin_company_urls
+        ),
+        linkedin_profiles=len(
+            result.contacts.linkedin_profile_urls
+        ),
+        facebook=len(
+            result.contacts.facebook_urls
+        ),
+        instagram=len(
+            result.contacts.instagram_urls
+        ),
+        x=len(
+            result.contacts.x_urls
+        ),
+        youtube=len(
+            result.contacts.youtube_urls
+        ),
+        github=len(
+            result.contacts.github_urls
+        ),
+        tiktok=len(
+            result.contacts.tiktok_urls
+        ),
+    )
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -224,12 +220,10 @@ def _normalize_result(
     """
     Normalize and deduplicate extracted contacts.
 
-    Deduplication identity:
-
+    Identity:
         (kind, normalized_value)
 
-    The original source URL is retained for the first accepted
-    observation of each deterministic identity.
+    The source URL from the first accepted observation is retained.
     """
 
     normalized = ContactExtractionResult()
@@ -241,12 +235,10 @@ def _normalize_result(
     discarded_count = 0
 
     for evidence in result.evidence:
-        normalized_value = (
-            _normalize_contact_value(
-                kind=evidence.kind,
-                value=evidence.value,
-                phone_region=phone_region,
-            )
+        normalized_value = _normalize_contact_value(
+            kind=evidence.kind,
+            value=evidence.value,
+            phone_region=phone_region,
         )
 
         if normalized_value is None:
@@ -263,12 +255,10 @@ def _normalize_result(
 
         seen.add(identity)
 
-        normalized_evidence = (
-            evidence.model_copy(
-                update={
-                    "value": normalized_value,
-                }
-            )
+        normalized_evidence = evidence.model_copy(
+            update={
+                "value": normalized_value,
+            }
         )
 
         normalized.evidence.append(
@@ -292,9 +282,7 @@ def _normalize_contact_value(
     value: str,
     phone_region: str | None,
 ) -> str | None:
-    """
-    Normalize a contact according to its contact kind.
-    """
+    """Normalize one contact according to its contact kind."""
 
     if kind == "email":
         return normalize_email(
@@ -325,9 +313,7 @@ def _append_contact_value(
     result: ContactExtractionResult,
     evidence: ContactEvidence,
 ) -> None:
-    """
-    Add one normalized contact value to the correct result collection.
-    """
+    """Add a normalized value to the appropriate result collection."""
 
     value = evidence.value
     kind = evidence.kind

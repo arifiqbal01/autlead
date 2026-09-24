@@ -1,4 +1,4 @@
-"""add webartsy stage state
+"""add enrichment stage state
 
 Revision ID: 6ecf277c74ba
 Revises: 85678a799751

@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/stages/technology.py
+# app/pipelines/enrichment/stages/technology.py
 
 from __future__ import annotations
 

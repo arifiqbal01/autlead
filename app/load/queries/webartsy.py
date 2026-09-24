@@ -1,4 +1,4 @@
-# app/queries/webartsy.py
+# app/queries/enrichment.py
 
 from __future__ import annotations
 

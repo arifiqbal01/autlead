@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/stages/people.py
+# app/pipelines/enrichment/stages/people.py
 
 from __future__ import annotations
 

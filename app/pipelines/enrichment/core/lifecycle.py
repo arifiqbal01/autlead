@@ -7,15 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.state.pipeline.enrichment import (
-    WebArtsyStage,
+    EnrichmentStage,
+    get_stage_state,
     mark_stage_completed,
     mark_stage_failed,
     mark_stage_running,
-    should_run_stage,
 )
 
 
 logger = get_logger(__name__)
+
 
 T = TypeVar("T")
 
@@ -25,24 +26,39 @@ async def stage_should_run(
     *,
     company_id: int,
     company_name: str,
-    stage: WebArtsyStage,
+    stage: EnrichmentStage,
 ) -> bool:
-    run_stage = await should_run_stage(
-        session,
+    """
+    Determine whether an enrichment stage should execute.
+
+    A completed stage is skipped. Missing, failed, or otherwise
+    incomplete stage state is eligible to run again.
+
+    Rehydrating stages such as homepage and business pages may still
+    load persisted data even when this function returns False.
+    """
+
+    state = await get_stage_state(
+        session=session,
         company_id=company_id,
         stage=stage,
     )
 
-    if not run_stage:
+    if state is None:
+        return True
+
+    if state.status == "completed":
         logger.info(
-            "webartsy_company_stage_skipped",
+            "enrichment_stage_skipped",
             company_id=company_id,
             company_name=company_name,
             stage=stage.value,
             reason="already_completed",
         )
 
-    return run_stage
+        return False
+
+    return True
 
 
 async def run_checkpointed_stage(
@@ -50,21 +66,37 @@ async def run_checkpointed_stage(
     *,
     company_id: int,
     company_name: str,
-    stage: WebArtsyStage,
+    stage: EnrichmentStage,
     operation: Callable[[], Awaitable[T]],
 ) -> T | None:
     """
-    Execute one resumable WebArtsy stage.
+    Run one enrichment stage with persisted checkpoint state.
 
-    Returns None when the stage was already completed.
+    Flow:
+
+        inspect stage state
+            ↓
+        already completed → skip
+            ↓
+        mark running + commit
+            ↓
+        execute operation
+            ↓
+        success → mark completed + commit
+        failure → rollback → mark failed + commit → re-raise
+
+    Transaction behavior intentionally preserves the existing
+    enrichment checkpoint semantics.
     """
 
-    if not await stage_should_run(
+    should_run = await stage_should_run(
         session,
         company_id=company_id,
         company_name=company_name,
         stage=stage,
-    ):
+    )
+
+    if not should_run:
         return None
 
     await mark_stage_running(
@@ -76,7 +108,7 @@ async def run_checkpointed_stage(
     await session.commit()
 
     logger.info(
-        "webartsy_company_stage_started",
+        "enrichment_stage_started",
         company_id=company_id,
         company_name=company_name,
         stage=stage.value,
@@ -94,11 +126,10 @@ async def run_checkpointed_stage(
         await session.commit()
 
         logger.info(
-            "webartsy_company_stage_checkpointed",
+            "enrichment_stage_completed",
             company_id=company_id,
             company_name=company_name,
             stage=stage.value,
-            status="completed",
         )
 
         return result
@@ -115,8 +146,8 @@ async def run_checkpointed_stage(
 
         await session.commit()
 
-        logger.error(
-            "webartsy_company_stage_failed",
+        logger.exception(
+            "enrichment_stage_failed",
             company_id=company_id,
             company_name=company_name,
             stage=stage.value,

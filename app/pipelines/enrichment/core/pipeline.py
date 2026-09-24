@@ -1,8 +1,7 @@
-# app/pipelines/enrichment/existing_companies.py
+# app/pipelines/enrichment/core/pipeline.py
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import select
@@ -14,10 +13,16 @@ from app.pipelines.common.workers import (
     WorkerRetryPolicy,
     run_worker_pool,
 )
-from app.pipelines.webartsy.company import (
-    WebArtsyCompanyResult,
-    WebArtsyCompanyWorkItem,
+from app.pipelines.enrichment.core.company import (
     process_company_with_session,
+)
+from app.pipelines.enrichment.core.models import (
+    CompanyEnrichmentResult,
+    EnrichmentCompanyFailure,
+    EnrichmentPipelineResult,
+)
+from app.pipelines.enrichment.core.work_items import (
+    CompanyEnrichmentWorkItem,
 )
 from app.providers.crawling.crawl4ai_provider import (
     Crawl4AICrawlingProvider,
@@ -41,60 +46,11 @@ logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Failure
+# Enrichment pipeline
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True, slots=True)
-class WebArtsyExistingCompanyFailure:
-    """
-    One persisted company that failed during WebArtsy enrichment.
-    """
-
-    company_id: int
-    company_name: str
-    website: str | None
-
-    stage: str
-
-    error_type: str
-    error_message: str
-    attempts: int
-
-
-# ---------------------------------------------------------------------------
-# Result
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class WebArtsyExistingCompaniesResult:
-    """
-    Aggregate result for PostgreSQL-backed WebArtsy enrichment.
-    """
-
-    selected: int
-    succeeded: int
-    failed: int
-
-    companies_with_website: int
-    companies_without_website: int
-
-    people_found: int
-    decision_makers_found: int
-
-    last_company_id: int | None
-
-    companies: list[WebArtsyCompanyResult]
-    failures: list[WebArtsyExistingCompanyFailure]
-
-
-# ---------------------------------------------------------------------------
-# Existing-company pipeline
-# ---------------------------------------------------------------------------
-
-
-async def run_webartsy_existing_companies_pipeline(
+async def run_enrichment_pipeline(
     *,
     crawler_provider: Crawl4AICrawlingProvider,
     technology_provider: WebsiteTechnologyDetectionProvider,
@@ -104,96 +60,53 @@ async def run_webartsy_existing_companies_pipeline(
     groq_provider: GroqLLMProvider,
     start_from: datetime | None = None,
     after_company_id: int | None = None,
-
     batch_size: int = 100,
     max_companies: int | None = None,
-
     company_workers: int = 3,
     company_queue_size: int | None = None,
     company_retries: int = 1,
-
     phone_region: str | None = None,
     source_id: int | None = None,
-
     retention_days: int = 30,
     timeout: int = 30,
-
     decision_maker_limit: int = 5,
     person_email_limit: int | None = None,
     business_page_limit: int = 5,
-
     language: str = "nl",
-) -> WebArtsyExistingCompaniesResult:
+) -> EnrichmentPipelineResult:
     """
-    Run WebArtsy enrichment against companies already persisted
-    in PostgreSQL.
+    Enrich companies already persisted in PostgreSQL.
 
-    Business discovery is NOT performed.
+    Acquisition/business discovery is not performed here.
 
-    Workflow:
+    Flow:
 
         PostgreSQL Company
             ↓
-        fetch one bounded batch
+        bounded database batch
             ↓
-        WebArtsyCompanyWorkItem
+        CompanyEnrichmentWorkItem
             ↓
-        async worker pool
+        worker pool
             ↓
-        each worker:
-            process_company_with_session()
-                ↓
-            dedicated AsyncSession
-                ↓
-            technology detection
-                ↓
-            performance + SEO
-                ↓
-            website crawl
-                ↓
-            business pages
-                ↓
-            contacts
-                ↓
-            people
-                ↓
-            decision makers
-                ↓
-            persistence
-                ↓
-            commit
+        dedicated session per company
             ↓
-        worker gets next company
+        company enrichment
             ↓
-        next database batch
+        next company / next batch
 
     Database selection and company processing use separate sessions.
 
     ORM Company objects are never passed into concurrent workers.
-    Workers receive immutable WebArtsyCompanyWorkItem objects.
+    Workers receive immutable CompanyEnrichmentWorkItem objects.
 
-    Selection options:
-
-        start_from:
-            only companies created at or after this datetime
-
-        after_company_id:
-            only companies whose ID is greater than this value
-
-        batch_size:
-            number of companies loaded from PostgreSQL at once
-
-        max_companies:
-            optional maximum number of companies processed during
-            this invocation
-
-    Keyset pagination using Company.id prevents loading thousands
-    of ORM records into memory at once.
+    Keyset pagination using Company.id prevents loading the complete
+    company table into memory.
     """
 
-    # =========================================================
-    # VALIDATION
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
 
     if batch_size < 1:
         raise ValueError(
@@ -226,9 +139,9 @@ async def run_webartsy_existing_companies_pipeline(
             "max_companies must be >= 1"
         )
 
-    # =========================================================
-    # PIPELINE STATE
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Pipeline state
+    # ------------------------------------------------------------------
 
     cursor = after_company_id
 
@@ -237,15 +150,15 @@ async def run_webartsy_existing_companies_pipeline(
     failed_total = 0
 
     successful_results: list[
-        WebArtsyCompanyResult
+        CompanyEnrichmentResult
     ] = []
 
     failures: list[
-        WebArtsyExistingCompanyFailure
+        EnrichmentCompanyFailure
     ] = []
 
     logger.info(
-        "webartsy_existing_pipeline_started",
+        "enrichment_pipeline_started",
         start_from=(
             start_from.isoformat()
             if start_from is not None
@@ -259,9 +172,9 @@ async def run_webartsy_existing_companies_pipeline(
         company_retries=company_retries,
     )
 
-    # =========================================================
-    # BATCH LOOP
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Batch loop
+    # ------------------------------------------------------------------
 
     while True:
         current_batch_size = batch_size
@@ -302,37 +215,28 @@ async def run_webartsy_existing_companies_pipeline(
         )
 
         logger.info(
-            "webartsy_existing_batch_loaded",
-            companies=len(
-                work_items
-            ),
-            first_company_id=(
-                batch_first_id
-            ),
-            last_company_id=(
-                batch_last_id
-            ),
-            selected_total=(
-                selected_total
-            ),
+            "enrichment_batch_loaded",
+            companies=len(work_items),
+            first_company_id=batch_first_id,
+            last_company_id=batch_last_id,
+            selected_total=selected_total,
         )
 
-        # =====================================================
-        # COMPANY HANDLER
-        # =====================================================
+        # --------------------------------------------------------------
+        # Company handler
+        # --------------------------------------------------------------
 
         async def handle_company(
-            company: WebArtsyCompanyWorkItem,
-        ) -> WebArtsyCompanyResult:
+            company: CompanyEnrichmentWorkItem,
+        ) -> CompanyEnrichmentResult:
             """
             Process exactly one persisted company.
 
-            process_company_with_session() owns a completely
-            separate AsyncSession for this company.
+            Company processing owns a dedicated AsyncSession.
             """
 
             logger.info(
-                "webartsy_existing_company_started",
+                "enrichment_company_worker_started",
                 company_id=company.company_id,
                 company_name=company.name,
                 website=company.website,
@@ -340,94 +244,69 @@ async def run_webartsy_existing_companies_pipeline(
 
             result = await process_company_with_session(
                 company=company,
-
                 crawler_provider=crawler_provider,
                 technology_provider=technology_provider,
                 performance_provider=performance_provider,
                 seo_provider=seo_provider,
                 email_provider=email_provider,
                 groq_provider=groq_provider,
-
                 phone_region=phone_region,
                 source_id=source_id,
-
                 retention_days=retention_days,
                 timeout=timeout,
-
-                decision_maker_limit=decision_maker_limit,
-                person_email_limit=person_email_limit,
-                business_page_limit=business_page_limit,
-
+                decision_maker_limit=(
+                    decision_maker_limit
+                ),
+                person_email_limit=(
+                    person_email_limit
+                ),
+                business_page_limit=(
+                    business_page_limit
+                ),
                 language=language,
             )
 
             logger.info(
-                "webartsy_existing_company_completed",
-                company_id=(
-                    result.company_id
-                ),
-                company_name=(
-                    result.company_name
-                ),
-                website=(
-                    result.website
-                ),
+                "enrichment_company_worker_completed",
+                company_id=result.company_id,
+                company_name=result.company_name,
+                website=result.website,
                 website_missing=(
                     result.website_missing
                 ),
-                pages=(
-                    result.pages_processed
-                ),
-                people=len(
-                    result.people
-                ),
-                decision_makers=len(
-                    result.decision_makers
+                pages=result.pages_processed,
+                people=_people_count(result),
+                decision_makers=(
+                    _decision_maker_count(
+                        result
+                    )
                 ),
             )
 
             return result
 
-        # =====================================================
-        # PROCESS THIS BATCH
-        # =====================================================
+        # --------------------------------------------------------------
+        # Worker pool
+        # --------------------------------------------------------------
 
         worker_result = await run_worker_pool(
             items=work_items,
-
-            worker_count=(
-                company_workers
+            worker_count=company_workers,
+            queue_size=company_queue_size,
+            handler=handle_company,
+            retry_policy=WorkerRetryPolicy(
+                retries=company_retries,
+                base_delay_seconds=2.0,
+                max_delay_seconds=15.0,
+                backoff_factor=2.0,
             ),
-
-            queue_size=(
-                company_queue_size
-            ),
-
-            handler=(
-                handle_company
-            ),
-
-            retry_policy=(
-                WorkerRetryPolicy(
-                    retries=company_retries,
-                    base_delay_seconds=2.0,
-                    max_delay_seconds=15.0,
-                    backoff_factor=2.0,
-                )
-            ),
-
-            should_retry=(
-                _should_retry_company
-            ),
-
-            item_name=(
-                _company_item_name
-            ),
+            should_retry=_should_retry_company,
+            item_name=_company_item_name,
         )
 
-        # =====================================================
-        # SUCCESSFUL COMPANIES
-        # =====================================================
+        # --------------------------------------------------------------
+        # Successful companies
+        # --------------------------------------------------------------
 
         successful_results.extend(
             worker_result.results
@@ -441,39 +320,31 @@ async def run_webartsy_existing_companies_pipeline(
             worker_result.failed
         )
 
-        # =====================================================
-        # FAILURES
-        # =====================================================
+        # --------------------------------------------------------------
+        # Failed companies
+        # --------------------------------------------------------------
 
         for worker_failure in (
             worker_result.failures
         ):
             company = worker_failure.item
 
-            failure = (
-                WebArtsyExistingCompanyFailure(
-                    company_id=(
-                        company.company_id
-                    ),
-                    company_name=(
-                        company.name
-                    ),
-                    website=(
-                        company.website
-                    ),
-                    stage=_failure_stage(
-                        worker_failure.exception
-                    ),
-                    error_type=(
-                        worker_failure.error_type
-                    ),
-                    error_message=(
-                        worker_failure.error_message
-                    ),
-                    attempts=(
-                        worker_failure.attempts
-                    ),
-                )
+            failure = EnrichmentCompanyFailure(
+                company_id=company.company_id,
+                company_name=company.name,
+                website=company.website,
+                stage=_failure_stage(
+                    worker_failure.exception
+                ),
+                error_type=(
+                    worker_failure.error_type
+                ),
+                error_message=(
+                    worker_failure.error_message
+                ),
+                attempts=(
+                    worker_failure.attempts
+                ),
             )
 
             failures.append(
@@ -481,69 +352,48 @@ async def run_webartsy_existing_companies_pipeline(
             )
 
             logger.error(
-                "webartsy_existing_company_failed",
-                company_id=(
-                    failure.company_id
-                ),
-                company_name=(
-                    failure.company_name
-                ),
-                website=(
-                    failure.website
-                ),
-                stage=(
-                    failure.stage
-                ),
-                error_type=(
-                    failure.error_type
-                ),
+                "enrichment_company_failed",
+                company_id=failure.company_id,
+                company_name=failure.company_name,
+                website=failure.website,
+                stage=failure.stage,
+                error_type=failure.error_type,
                 error_message=(
                     failure.error_message
                 ),
-                attempts=(
-                    failure.attempts
-                ),
+                attempts=failure.attempts,
             )
 
-        # =====================================================
-        # ADVANCE KEYSET CURSOR
-        # =====================================================
+        # --------------------------------------------------------------
+        # Advance keyset cursor
+        # --------------------------------------------------------------
 
-        cursor = (
-            batch_last_id
-        )
+        cursor = batch_last_id
 
         logger.info(
-            "webartsy_existing_batch_completed",
-            batch_selected=len(
-                work_items
-            ),
+            "enrichment_batch_completed",
+            batch_selected=len(work_items),
             batch_succeeded=(
                 worker_result.succeeded
             ),
             batch_failed=(
                 worker_result.failed
             ),
-            selected_total=(
-                selected_total
-            ),
-            succeeded_total=(
-                succeeded_total
-            ),
-            failed_total=(
-                failed_total
-            ),
-            next_after_company_id=(
-                cursor
-            ),
+            selected_total=selected_total,
+            succeeded_total=succeeded_total,
+            failed_total=failed_total,
+            next_after_company_id=cursor,
         )
 
-        if len(work_items) < current_batch_size:
+        if (
+            len(work_items)
+            < current_batch_size
+        ):
             break
 
-    # =========================================================
-    # FINAL AGGREGATES
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Final aggregates
+    # ------------------------------------------------------------------
 
     companies_with_website = sum(
         1
@@ -558,79 +408,50 @@ async def run_webartsy_existing_companies_pipeline(
     )
 
     people_found = sum(
-        len(
-            company.people
-        )
+        _people_count(company)
         for company in successful_results
     )
 
     decision_makers_found = sum(
-        len(
-            company.decision_makers
-        )
+        _decision_maker_count(company)
         for company in successful_results
     )
 
-    result = (
-        WebArtsyExistingCompaniesResult(
-            selected=selected_total,
-            succeeded=succeeded_total,
-            failed=failed_total,
-
-            companies_with_website=(
-                companies_with_website
-            ),
-
-            companies_without_website=(
-                companies_without_website
-            ),
-
-            people_found=(
-                people_found
-            ),
-
-            decision_makers_found=(
-                decision_makers_found
-            ),
-
-            last_company_id=cursor,
-
-            companies=(
-                successful_results
-            ),
-
-            failures=(
-                failures
-            ),
-        )
+    result = EnrichmentPipelineResult(
+        selected=selected_total,
+        succeeded=succeeded_total,
+        failed=failed_total,
+        companies_with_website=(
+            companies_with_website
+        ),
+        companies_without_website=(
+            companies_without_website
+        ),
+        people_found=people_found,
+        decision_makers_found=(
+            decision_makers_found
+        ),
+        last_company_id=cursor,
+        companies=successful_results,
+        failures=failures,
     )
 
     logger.info(
-        "webartsy_existing_pipeline_completed",
-        selected=(
-            result.selected
-        ),
-        succeeded=(
-            result.succeeded
-        ),
-        failed=(
-            result.failed
-        ),
+        "enrichment_pipeline_completed",
+        selected=result.selected,
+        succeeded=result.succeeded,
+        failed=result.failed,
         companies_with_website=(
             result.companies_with_website
         ),
         companies_without_website=(
             result.companies_without_website
         ),
-        people_found=(
-            result.people_found
-        ),
+        people_found=result.people_found,
         decision_makers_found=(
             result.decision_makers_found
         ),
-        last_company_id=(
-            result.last_company_id
-        ),
+        last_company_id=result.last_company_id,
     )
 
     return result
@@ -646,7 +467,14 @@ async def _load_company_batch(
     start_from: datetime | None,
     after_company_id: int | None,
     limit: int,
-) -> list[WebArtsyCompanyWorkItem]:
+) -> list[CompanyEnrichmentWorkItem]:
+    """
+    Load one bounded batch of persisted companies.
+
+    Selection uses its own database session. ORM objects are converted
+    into immutable work items before leaving this function.
+    """
+
     async with SessionFactory() as session:
         statement = select(
             Company.id,
@@ -657,12 +485,14 @@ async def _load_company_batch(
 
         if start_from is not None:
             statement = statement.where(
-                Company.created_at >= start_from
+                Company.created_at
+                >= start_from
             )
 
         if after_company_id is not None:
             statement = statement.where(
-                Company.id > after_company_id
+                Company.id
+                > after_company_id
             )
 
         statement = (
@@ -680,7 +510,7 @@ async def _load_company_batch(
         rows = result.all()
 
     return [
-        WebArtsyCompanyWorkItem(
+        CompanyEnrichmentWorkItem(
             company_id=row.id,
             name=row.name,
             website=row.website,
@@ -691,12 +521,37 @@ async def _load_company_batch(
 
 
 # ---------------------------------------------------------------------------
+# Aggregate helpers
+# ---------------------------------------------------------------------------
+
+
+def _people_count(
+    result: CompanyEnrichmentResult,
+) -> int:
+    if result.people is None:
+        return 0
+
+    return len(
+        result.people.people
+    )
+
+
+def _decision_maker_count(
+    result: CompanyEnrichmentResult,
+) -> int:
+    if result.people is None:
+        return 0
+
+    return result.people.decision_maker_count
+
+
+# ---------------------------------------------------------------------------
 # Worker helpers
 # ---------------------------------------------------------------------------
 
 
 def _company_item_name(
-    company: WebArtsyCompanyWorkItem,
+    company: CompanyEnrichmentWorkItem,
 ) -> str:
     return (
         f"{company.company_id}:"
@@ -783,7 +638,7 @@ def _failure_stage(
         "CrawlingProviderError",
         "CrawlingProviderTimeout",
     }:
-        return "website_analysis"
+        return "homepage"
 
     if error_name in {
         "TechnologyDetectionProviderError",
@@ -796,7 +651,7 @@ def _failure_stage(
         "PageSpeedProviderError",
         "SeoProviderError",
     }:
-        return "performance_seo"
+        return "website_performance"
 
     if error_name in {
         "GroqProviderError",
@@ -821,4 +676,4 @@ def _failure_stage(
     }:
         return "company_validation"
 
-    return "company_pipeline"
+    return "company_enrichment"

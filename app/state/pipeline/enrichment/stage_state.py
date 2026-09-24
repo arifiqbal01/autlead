@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/stage_state.py
+# app/pipelines/enrichment/stage_state.py
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from app.models.persistence.webartsy_stage_state import (
     WebArtsyStageState,
 )
 from .stages import (
-    WebArtsyStage,
+    EnrichmentStage,
 )
 from .status import (
-    WebArtsyStageStatus,
+    EnrichmentStageStatus,
 )
 
 
@@ -22,7 +22,7 @@ async def get_stage_state(
     session: AsyncSession,
     *,
     company_id: int,
-    stage: WebArtsyStage,
+    stage: EnrichmentStage,
 ) -> WebArtsyStageState | None:
     return await session.scalar(
         select(WebArtsyStageState).where(
@@ -36,7 +36,7 @@ async def should_run_stage(
     session: AsyncSession,
     *,
     company_id: int,
-    stage: WebArtsyStage,
+    stage: EnrichmentStage,
 ) -> bool:
     state = await get_stage_state(
         session,
@@ -47,14 +47,14 @@ async def should_run_stage(
     if state is None:
         return True
 
-    return state.status != WebArtsyStageStatus.COMPLETED.value
+    return state.status != EnrichmentStageStatus.COMPLETED.value
 
 
 async def mark_stage_running(
     session: AsyncSession,
     *,
     company_id: int,
-    stage: WebArtsyStage,
+    stage: EnrichmentStage,
 ) -> WebArtsyStageState:
     state = await get_stage_state(
         session,
@@ -68,7 +68,7 @@ async def mark_stage_running(
         state = WebArtsyStageState(
             company_id=company_id,
             stage=stage.value,
-            status=WebArtsyStageStatus.RUNNING.value,
+            status=EnrichmentStageStatus.RUNNING.value,
             attempts=1,
             started_at=now,
             updated_at=now,
@@ -77,7 +77,7 @@ async def mark_stage_running(
         session.add(state)
 
     else:
-        state.status = WebArtsyStageStatus.RUNNING.value
+        state.status = EnrichmentStageStatus.RUNNING.value
         state.attempts += 1
         state.started_at = now
         state.error_type = None
@@ -93,7 +93,7 @@ async def mark_stage_completed(
     session: AsyncSession,
     *,
     company_id: int,
-    stage: WebArtsyStage,
+    stage: EnrichmentStage,
 ) -> None:
     state = await get_stage_state(
         session,
@@ -108,7 +108,7 @@ async def mark_stage_completed(
 
     now = datetime.now(UTC)
 
-    state.status = WebArtsyStageStatus.COMPLETED.value
+    state.status = EnrichmentStageStatus.COMPLETED.value
     state.completed_at = now
     state.updated_at = now
 
@@ -119,7 +119,7 @@ async def mark_stage_failed(
     session: AsyncSession,
     *,
     company_id: int,
-    stage: WebArtsyStage,
+    stage: EnrichmentStage,
     exc: Exception,
 ) -> None:
     state = await get_stage_state(
@@ -133,7 +133,7 @@ async def mark_stage_failed(
             f"Missing stage state for {company_id}:{stage}"
         )
 
-    state.status = WebArtsyStageStatus.FAILED.value
+    state.status = EnrichmentStageStatus.FAILED.value
     state.error_type = type(exc).__name__
     state.error_message = str(exc)
     state.updated_at = datetime.now(UTC)

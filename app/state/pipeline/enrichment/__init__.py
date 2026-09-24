@@ -1,6 +1,6 @@
-from app.state.pipeline.webartsy.status import WebArtsyStageStatus
-from app.state.pipeline.webartsy.stages import WebArtsyStage
-from app.state.pipeline.webartsy.stage_state import (
+from app.state.pipeline.enrichment.status import EnrichmentStageStatus
+from app.state.pipeline.enrichment.stages import EnrichmentStage
+from app.state.pipeline.enrichment.stage_state import (
     get_stage_state,
     should_run_stage,
     mark_stage_running,
@@ -9,8 +9,8 @@ from app.state.pipeline.webartsy.stage_state import (
 )
 
 __all__ = (
-    'WebArtsyStageStatus',
-    'WebArtsyStage',
+    'EnrichmentStage',
+    'EnrichmentStageStatus',
     'get_stage_state',
     'should_run_stage',
     'mark_stage_running',

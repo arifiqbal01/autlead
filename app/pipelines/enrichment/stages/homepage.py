@@ -1,3 +1,5 @@
+# app/pipelines/enrichment/homepage.py
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,9 +21,7 @@ from app.policies.retention.website_crawl import (
     WebsiteCrawlRetentionContext,
     should_recrawl_website,
 )
-from app.providers.crawling.crawl4ai_provider import (
-    Crawl4AICrawlingProvider,
-)
+from app.providers.crawling.protocol import CrawlingProvider
 from app.state.transitions.crawling_state import (
     get_or_create_website_crawl_state,
     mark_website_crawl_completed,
@@ -51,32 +51,22 @@ class WebsitePageCrawlResult:
 
 
 async def analyze_website(
-    session: AsyncSession,
     *,
+    session: AsyncSession,
     company_id: int,
     website: str,
-    provider: Crawl4AICrawlingProvider,
+    provider: CrawlingProvider,
     retention_days: int,
     timeout: int = 30,
 ) -> WebsiteAnalysisResult:
     """
-    Analyze the company's root website.
+    Analyze the company's canonical/root website.
 
-    This operation owns the company-level crawl state and retention
-    decision.
+    The root crawl owns the company-level WebsiteCrawlState and applies
+    website crawl retention.
 
-    It should be used for the canonical/root company website only.
-
-    Additional pages such as:
-
-        /team
-        /about
-        /about-us
-        /contact
-        /leadership
-
-    should be crawled using ``crawl_website_page()`` so they do not
-    overwrite or interfere with the company's root crawl state.
+    Secondary/internal pages must use ``crawl_website_page()`` so they do
+    not modify the root website crawl state.
     """
 
     logger.info(
@@ -85,11 +75,12 @@ async def analyze_website(
         website=website,
         retention_days=retention_days,
         timeout=timeout,
+        provider=provider.provider_name,
     )
 
-    # =========================================================
+    # ------------------------------------------------------------------
     # Crawl state
-    # =========================================================
+    # ------------------------------------------------------------------
 
     state = await get_or_create_website_crawl_state(
         session=session,
@@ -103,9 +94,9 @@ async def analyze_website(
 
     now = datetime.now(UTC)
 
-    # =========================================================
-    # Retention check
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Retention
+    # ------------------------------------------------------------------
 
     if existing_crawl is not None:
         should_recrawl = should_recrawl_website(
@@ -161,15 +152,17 @@ async def analyze_website(
             reason="no_previous_crawl",
         )
 
-    # =========================================================
-    # Start root crawl
-    # =========================================================
+    # ------------------------------------------------------------------
+    # Mark root crawl started
+    # ------------------------------------------------------------------
 
     await mark_website_crawl_started(
         session=session,
         state=state,
     )
 
+    # Intentionally committed before the external crawl so the started
+    # state is durable even if crawling fails.
     await session.commit()
 
     logger.info(
@@ -179,9 +172,9 @@ async def analyze_website(
         provider=provider.provider_name,
     )
 
-    # =========================================================
+    # ------------------------------------------------------------------
     # Crawl root website
-    # =========================================================
+    # ------------------------------------------------------------------
 
     try:
         content = await provider.crawl(
@@ -203,6 +196,8 @@ async def analyze_website(
             error=str(exc),
         )
 
+        # Re-fetch after rollback so we are working with current
+        # session state.
         state = await get_or_create_website_crawl_state(
             session=session,
             company_id=company_id,
@@ -230,9 +225,9 @@ async def analyze_website(
         links=len(content.links),
     )
 
-    # =========================================================
+    # ------------------------------------------------------------------
     # Persist root crawl
-    # =========================================================
+    # ------------------------------------------------------------------
 
     try:
         crawl = await load_website_crawl(
@@ -249,13 +244,6 @@ async def analyze_website(
         )
 
         await session.commit()
-
-        logger.info(
-            "website_crawl_persisted",
-            company_id=company_id,
-            website=website,
-            crawl_id=crawl.id,
-        )
 
     except Exception as exc:
         await session.rollback()
@@ -286,6 +274,13 @@ async def analyze_website(
         raise
 
     logger.info(
+        "website_crawl_persisted",
+        company_id=company_id,
+        website=website,
+        crawl_id=crawl.id,
+    )
+
+    logger.info(
         "website_analysis_completed",
         company_id=company_id,
         website=website,
@@ -309,26 +304,16 @@ async def crawl_website_page(
     session: AsyncSession,
     company_id: int,
     url: str,
-    provider: Crawl4AICrawlingProvider,
+    provider: CrawlingProvider,
     timeout: int = 30,
 ) -> WebsitePageCrawlResult:
     """
     Crawl and persist one selected internal website page.
 
-    This operation deliberately does not modify WebsiteCrawlState.
+    Unlike ``analyze_website()``, this operation does not modify
+    WebsiteCrawlState and does not apply root website retention.
 
-    It is intended for secondary business-relevant pages such as:
-
-        /team
-        /people
-        /about
-        /about-us
-        /over-ons
-        /leadership
-        /management
-        /contact
-
-    The caller owns transaction boundaries.
+    The caller owns the transaction boundary.
     """
 
     logger.info(
@@ -375,11 +360,3 @@ async def crawl_website_page(
         content=content,
         crawl_id=crawl.id,
     )
-
-
-__all__ = [
-    "WebsiteAnalysisResult",
-    "WebsitePageCrawlResult",
-    "analyze_website",
-    "crawl_website_page",
-]

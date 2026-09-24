@@ -1,9 +1,9 @@
-# app/pipelines/webartsy/stages.py
+# app/pipelines/enrichment/stages.py
 
 from enum import StrEnum
 
 
-class WebArtsyStage(StrEnum):
+class EnrichmentStage(StrEnum):
     TECHNOLOGY = "technology_detection"
     PERFORMANCE = "performance_seo"
     WEBSITE = "website_analysis"

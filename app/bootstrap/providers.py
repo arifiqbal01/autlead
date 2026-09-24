@@ -102,8 +102,8 @@ def create_email_verification_provider() -> MrEmailCheckerProvider:
     return MrEmailCheckerProvider(
         timeout_seconds=30.0,
         smtp_enabled=True,
-        smtp_from="verify@webartsy.nl",
-        smtp_helo_host="webartsy.nl",
+        smtp_from="verify@enrichment.nl",
+        smtp_helo_host="enrichment.nl",
         smtp_timeout_ms=10_000,
         detect_catch_all=True,
     )

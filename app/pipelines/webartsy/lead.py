@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/lead.py
+# app/pipelines/enrichment/lead.py
 
 from __future__ import annotations
 

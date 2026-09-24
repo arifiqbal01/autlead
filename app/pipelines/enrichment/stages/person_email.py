@@ -1,11 +1,11 @@
-# app/pipelines/common/person_email.py
+# app/pipelines/enrichment/person_email.py
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
@@ -14,6 +14,10 @@ from app.extract.email import (
 )
 from app.load.postgres.person_emails import (
     load_person_email_observation,
+)
+from app.models.persistence.person import Person
+from app.models.persistence.person_observation import (
+    PersonObservation,
 )
 from app.policies.qualification import (
     EmailVerificationAssessment,
@@ -33,7 +37,21 @@ logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Input models
+# Persisted person
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class PersistedPerson:
+    person_id: int
+    name: str
+    email: str | None
+    title: str | None
+    linkedin_url: str | None
+
+
+# ---------------------------------------------------------------------------
+# Email target
 # ---------------------------------------------------------------------------
 
 
@@ -41,17 +59,6 @@ logger = get_logger(__name__)
 class PersonEmailTarget:
     """
     One persisted person eligible for email verification/enrichment.
-
-    If an email already exists:
-        - skip when it has already been verified successfully
-        - otherwise verify it first
-
-    If no qualified email exists:
-        - generate deterministic candidates from person name
-          and company domain
-        - verify candidates sequentially
-        - persist verification evidence
-        - store the first qualified candidate on Person.email
     """
 
     person_id: int
@@ -66,7 +73,7 @@ class PersonEmailTarget:
 
 
 # ---------------------------------------------------------------------------
-# Result models
+# Results
 # ---------------------------------------------------------------------------
 
 
@@ -74,9 +81,6 @@ class PersonEmailTarget:
 class PersonEmailResult:
     """
     Final successful verification result for one persisted person.
-
-    A person only appears here when at least one verification
-    request completed successfully.
     """
 
     person_id: int
@@ -98,30 +102,7 @@ class PersonEmailResult:
 @dataclass(frozen=True, slots=True)
 class PersonEmailAnalysisResult:
     """
-    Result of email candidate generation and verification.
-
-    attempted_count:
-        Number of people considered.
-
-    verified_count:
-        Number of candidate email addresses successfully checked
-        by the verification provider.
-
-    qualified_count:
-        Number of people for whom a qualified email was found.
-
-    already_verified_count:
-        Number of people skipped because their existing Person.email
-        already has successful verification evidence.
-
-    generated_count:
-        Number of deterministic pattern candidates generated.
-
-    failed_count:
-        Number of normalization/provider failures.
-
-    persisted_count:
-        Number of verification observations persisted.
+    Result of person-email enrichment.
     """
 
     people: list[PersonEmailResult]
@@ -136,7 +117,91 @@ class PersonEmailAnalysisResult:
 
 
 # ---------------------------------------------------------------------------
-# Public API
+# Enrichment orchestration
+# ---------------------------------------------------------------------------
+
+
+async def enrich_person_emails(
+    *,
+    session: AsyncSession,
+    provider: EmailVerificationProvider,
+    company_id: int,
+    company_name: str,
+    company_domain: str,
+    source_id: int | None = None,
+    person_limit: int | None = None,
+    candidate_limit: int = 8,
+) -> PersonEmailAnalysisResult:
+    """
+    Enrich persisted people with verified email addresses.
+
+    Flow:
+
+        persisted people
+            ↓
+        build PersonEmailTarget[]
+            ↓
+        existing email?
+            ├── verified already → skip
+            └── otherwise verify
+            ↓
+        generate deterministic candidates when needed
+            ↓
+        verification
+            ↓
+        qualification
+            ↓
+        persist verification evidence
+            ↓
+        assign first qualified email to Person.email
+
+    Email verification applies independently of decision-maker
+    classification.
+
+    Transaction ownership belongs to the caller.
+    """
+
+    people = await _load_people(
+        session,
+        company_id=company_id,
+        limit=person_limit,
+    )
+
+    targets = [
+        PersonEmailTarget(
+            person_id=person.person_id,
+            company_id=company_id,
+            person_name=person.name,
+            company_domain=company_domain,
+            email=person.email,
+            source_urls=(
+                (person.linkedin_url,)
+                if person.linkedin_url
+                else ()
+            ),
+        )
+        for person in people
+    ]
+
+    logger.info(
+        "person_email_targets_selected",
+        company_id=company_id,
+        company_name=company_name,
+        company_domain=company_domain,
+        targets=len(targets),
+    )
+
+    return await analyze_person_emails(
+        session=session,
+        provider=provider,
+        targets=targets,
+        source_id=source_id,
+        candidate_limit=candidate_limit,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Email analysis
 # ---------------------------------------------------------------------------
 
 
@@ -152,34 +217,14 @@ async def analyze_person_emails(
     """
     Find and verify a usable email for persisted people.
 
-    Pipeline:
+    Existing addresses are considered first. If no qualified existing
+    address is available, deterministic name/domain candidates are
+    generated and verified sequentially.
 
-        persisted person
-            ↓
-        existing Person.email?
-            ↓
-        already verified?
-            ├── yes → skip
-            └── no  → verify existing address
-                          ↓
-                    qualified?
-                        ├── yes → done
-                        └── no
-                            ↓
-                    generate name/domain candidates
-                            ↓
-                    verify sequentially
-                            ↓
-                    first qualified candidate
-                            ↓
-                    update Person.email
+    Verification evidence is persisted for every candidate that receives
+    a valid provider response.
 
-    Verification observations are persisted for every candidate
-    that receives a valid response from the verification provider.
-
-    Pattern-generated catch-all addresses are never accepted as
-    qualified because SMTP acceptance on a catch-all domain does
-    not prove that the guessed mailbox belongs to the person.
+    Pattern-generated catch-all addresses are never accepted as qualified.
 
     Transaction ownership belongs to the caller.
     """
@@ -214,9 +259,7 @@ async def analyze_person_emails(
         candidate_limit=candidate_limit,
     )
 
-    results: list[
-        PersonEmailResult
-    ] = []
+    results: list[PersonEmailResult] = []
 
     attempted_count = 0
     verified_count = 0
@@ -238,9 +281,9 @@ async def analyze_person_emails(
             company_domain=target.company_domain,
         )
 
-        # =====================================================
+        # ------------------------------------------------------------------
         # 1. Existing email
-        # =====================================================
+        # ------------------------------------------------------------------
 
         existing_email: str | None = None
 
@@ -261,12 +304,10 @@ async def analyze_person_emails(
                 )
 
             else:
-                already_verified = (
-                    await _has_verified_email(
-                        session=session,
-                        person_id=target.person_id,
-                        normalized_email=existing_email,
-                    )
+                already_verified = await _has_verified_email(
+                    session=session,
+                    person_id=target.person_id,
+                    normalized_email=existing_email,
                 )
 
                 if already_verified:
@@ -283,9 +324,9 @@ async def analyze_person_emails(
 
                     continue
 
-        # =====================================================
-        # 2. Build ordered candidates
-        # =====================================================
+        # ------------------------------------------------------------------
+        # 2. Candidate preparation
+        # ------------------------------------------------------------------
 
         candidates: list[
             tuple[str, str]
@@ -311,13 +352,13 @@ async def analyze_person_emails(
             generated_candidates
         )
 
-        seen_candidates: set[str] = {
-            existing_email
-        } if existing_email else set()
+        seen_candidates: set[str] = (
+            {existing_email}
+            if existing_email
+            else set()
+        )
 
-        for generated_email in (
-            generated_candidates
-        ):
+        for generated_email in generated_candidates:
             normalized_candidate = normalize_email(
                 generated_email
             )
@@ -325,10 +366,7 @@ async def analyze_person_emails(
             if normalized_candidate is None:
                 continue
 
-            if (
-                normalized_candidate
-                in seen_candidates
-            ):
+            if normalized_candidate in seen_candidates:
                 continue
 
             seen_candidates.add(
@@ -372,13 +410,11 @@ async def analyze_person_emails(
             ),
         )
 
-        # =====================================================
-        # 3. Verify candidates sequentially
-        # =====================================================
+        # ------------------------------------------------------------------
+        # 3. Verification
+        # ------------------------------------------------------------------
 
-        final_result: (
-            PersonEmailResult | None
-        ) = None
+        final_result: PersonEmailResult | None = None
 
         for (
             candidate_email,
@@ -394,11 +430,9 @@ async def analyze_person_emails(
             )
 
             try:
-                verification = (
-                    await provider.verify(
-                        EmailVerificationRequest(
-                            email=candidate_email,
-                        )
+                verification = await provider.verify(
+                    EmailVerificationRequest(
+                        email=candidate_email,
                     )
                 )
 
@@ -420,51 +454,27 @@ async def analyze_person_emails(
 
             verified_count += 1
 
-            # =================================================
+            # ------------------------------------------------------------------
             # 4. Qualification
-            # =================================================
+            # ------------------------------------------------------------------
 
-            decision = (
-                evaluate_email_qualification(
-                    EmailVerificationAssessment(
-                        status=(
-                            verification.status
-                        ),
-                        valid=(
-                            verification.valid
-                        ),
-                        score=(
-                            verification.score
-                        ),
-                        risk=(
-                            verification.risk
-                        ),
-                        smtp_verdict=(
-                            verification.smtp.verdict
-                        ),
-                    )
+            decision = evaluate_email_qualification(
+                EmailVerificationAssessment(
+                    status=verification.status,
+                    valid=verification.valid,
+                    score=verification.score,
+                    risk=verification.risk,
+                    smtp_verdict=(
+                        verification.smtp.verdict
+                    ),
                 )
             )
 
-            is_qualified = (
-                decision.is_qualified
-            )
+            is_qualified = decision.is_qualified
+            qualification_reason = decision.reason
 
-            qualification_reason = (
-                decision.reason
-            )
-
-            # -------------------------------------------------
-            # Pattern guesses must not be accepted on catch-all
-            # domains.
-            #
-            # A catch-all server accepting:
-            #
-            #     john@example.com
-            #
-            # does not prove that John's mailbox exists.
-            # -------------------------------------------------
-
+            # Pattern guesses on catch-all domains cannot prove that the
+            # generated mailbox belongs to this person.
             if (
                 candidate_source == "pattern"
                 and (
@@ -484,22 +494,18 @@ async def analyze_person_emails(
                 verification.score / 100
             )
 
-            # =================================================
-            # 5. Persist verification evidence
-            # =================================================
+            # ------------------------------------------------------------------
+            # 5. Persistence
+            # ------------------------------------------------------------------
 
             await load_person_email_observation(
                 session=session,
                 person_id=target.person_id,
                 company_id=target.company_id,
                 source_id=source_id,
-                provider_name=(
-                    verification.provider
-                ),
+                provider_name=verification.provider,
                 email=candidate_email,
-                normalized_email=(
-                    candidate_email
-                ),
+                normalized_email=candidate_email,
                 confidence=confidence,
                 verification_method=(
                     _verification_method(
@@ -510,8 +516,7 @@ async def analyze_person_emails(
                     verification.status
                 ),
                 pattern_inferred=(
-                    candidate_source
-                    == "pattern"
+                    candidate_source == "pattern"
                 ),
                 source_urls=(
                     " ; ".join(
@@ -526,40 +531,23 @@ async def analyze_person_emails(
 
             persisted_count += 1
 
-            candidate_result = (
-                PersonEmailResult(
-                    person_id=(
-                        target.person_id
-                    ),
-                    person_name=(
-                        target.person_name
-                    ),
-                    email=candidate_email,
-                    status=(
-                        verification.status
-                    ),
-                    confidence=confidence,
-                    is_qualified=(
-                        is_qualified
-                    ),
-                    qualification_reason=(
-                        qualification_reason
-                    ),
-                    candidate_source=(
-                        candidate_source
-                    ),
-                    persisted=True,
-                    verification=(
-                        verification
-                    ),
-                )
+            candidate_result = PersonEmailResult(
+                person_id=target.person_id,
+                person_name=target.person_name,
+                email=candidate_email,
+                status=verification.status,
+                confidence=confidence,
+                is_qualified=is_qualified,
+                qualification_reason=(
+                    qualification_reason
+                ),
+                candidate_source=candidate_source,
+                persisted=True,
+                verification=verification,
             )
 
-            # Keep the most recent verification as the
-            # person's result when none qualify.
-            final_result = (
-                candidate_result
-            )
+            # Preserve the latest valid verification result if none qualify.
+            final_result = candidate_result
 
             logger.info(
                 "person_email_verified",
@@ -579,27 +567,22 @@ async def analyze_person_emails(
                 catch_all=(
                     verification.smtp.catch_all
                 ),
-                is_qualified=(
-                    is_qualified
-                ),
+                is_qualified=is_qualified,
                 qualification_reason=(
                     qualification_reason
                 ),
             )
 
-            # =================================================
+            # ------------------------------------------------------------------
             # 6. First qualified candidate wins
-            # =================================================
+            # ------------------------------------------------------------------
 
             if not is_qualified:
                 continue
 
             qualified_count += 1
 
-            if (
-                candidate_email
-                != existing_email
-            ):
+            if candidate_email != existing_email:
                 await _update_person_email(
                     session=session,
                     person_id=target.person_id,
@@ -623,9 +606,9 @@ async def analyze_person_emails(
                 final_result
             )
 
-    # =========================================================
+    # ------------------------------------------------------------------
     # 7. Completed
-    # =========================================================
+    # ------------------------------------------------------------------
 
     result = PersonEmailAnalysisResult(
         people=results,
@@ -635,9 +618,7 @@ async def analyze_person_emails(
         already_verified_count=(
             already_verified_count
         ),
-        generated_count=(
-            generated_count
-        ),
+        generated_count=generated_count,
         failed_count=failed_count,
         persisted_count=persisted_count,
     )
@@ -651,14 +632,138 @@ async def analyze_person_emails(
         already_verified=(
             result.already_verified_count
         ),
-        generated=(
-            result.generated_count
-        ),
+        generated=result.generated_count,
         failed=result.failed_count,
         persisted=result.persisted_count,
     )
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Persisted people loading
+# ---------------------------------------------------------------------------
+
+
+async def _load_people(
+    session: AsyncSession,
+    *,
+    company_id: int,
+    limit: int | None = None,
+) -> list[PersistedPerson]:
+    """
+    Load persisted people for one company.
+
+    People without an email are intentionally included because deterministic
+    candidates can be generated from their name and the company domain.
+    """
+
+    statement = (
+        select(
+            Person,
+            PersonObservation,
+        )
+        .outerjoin(
+            PersonObservation,
+            PersonObservation.person_id == Person.id,
+        )
+        .where(
+            Person.company_id == company_id,
+        )
+        .order_by(
+            Person.id.asc(),
+            PersonObservation.observed_at.desc(),
+        )
+    )
+
+    rows = (
+        await session.execute(
+            statement
+        )
+    ).all()
+
+    people: list[PersistedPerson] = []
+    seen_person_ids: set[int] = set()
+
+    for person, observation in rows:
+        if person.id in seen_person_ids:
+            continue
+
+        seen_person_ids.add(
+            person.id
+        )
+
+        name = (
+            person.name.strip()
+            if person.name
+            else ""
+        )
+
+        if not name:
+            logger.debug(
+                "person_email_person_skipped",
+                company_id=company_id,
+                person_id=person.id,
+                reason="missing_name",
+            )
+            continue
+
+        email = (
+            person.email.strip()
+            if person.email
+            else None
+        )
+
+        if email == "":
+            email = None
+
+        title = (
+            observation.title
+            if observation
+            and observation.title
+            else person.title
+        )
+
+        linkedin_url = (
+            observation.linkedin_url
+            if observation
+            and observation.linkedin_url
+            else person.linkedin_url
+        )
+
+        people.append(
+            PersistedPerson(
+                person_id=person.id,
+                name=name,
+                email=email,
+                title=title,
+                linkedin_url=linkedin_url,
+            )
+        )
+
+        if (
+            limit is not None
+            and len(people) >= limit
+        ):
+            break
+
+    logger.info(
+        "people_for_email_verification_loaded",
+        company_id=company_id,
+        people=len(people),
+        with_email=sum(
+            1
+            for person in people
+            if person.email
+        ),
+        without_email=sum(
+            1
+            for person in people
+            if not person.email
+        ),
+    )
+
+    return people
 
 
 # ---------------------------------------------------------------------------
@@ -673,12 +778,8 @@ async def _has_verified_email(
     normalized_email: str,
 ) -> bool:
     """
-    Return True when this exact email already has successful
-    verification evidence for the person.
-
-    Matching both person_id and normalized_email prevents an old
-    verified address from suppressing verification of a newly
-    assigned address.
+    Check whether this exact email already has successful verification
+    evidence for this person.
     """
 
     result = await session.execute(
@@ -694,9 +795,7 @@ async def _has_verified_email(
         ),
         {
             "person_id": person_id,
-            "normalized_email": (
-                normalized_email
-            ),
+            "normalized_email": normalized_email,
         },
     )
 
@@ -716,7 +815,7 @@ async def _update_person_email(
     """
     Store a qualified email on the persisted Person.
 
-    The caller owns the transaction.
+    Transaction ownership belongs to the caller.
     """
 
     await session.execute(
@@ -739,7 +838,7 @@ async def _update_person_email(
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Verification helpers
 # ---------------------------------------------------------------------------
 
 
@@ -747,17 +846,10 @@ def _verification_method(
     verification: EmailVerificationResult,
 ) -> str:
     """
-    Describe the strongest verification mechanism attempted.
-
-    The provider owns the technical verification result.
-    This helper only maps that evidence into the existing
-    persistence field.
+    Map provider verification evidence into the existing persistence field.
     """
 
-    if (
-        verification.smtp.verdict
-        != "skipped"
-    ):
+    if verification.smtp.verdict != "skipped":
         return "smtp+mx"
 
     return "mx"

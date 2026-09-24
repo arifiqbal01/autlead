@@ -1,4 +1,4 @@
-# tests/pipelines/webartsy/test_lead.py
+# tests/pipelines/enrichment/test_lead.py
 
 from __future__ import annotations
 
@@ -106,12 +106,12 @@ async def test_run_webartsy_lead_pipeline_orchestrates_company_workers(
 
     with (
         patch(
-            "app.pipelines.webartsy.lead.run_business_discovery_pipeline",
+            "app.pipelines.enrichment.lead.run_business_discovery_pipeline",
             new_callable=AsyncMock,
             return_value=discovery_result,
         ) as mock_discovery,
         patch(
-            "app.pipelines.webartsy.lead.process_company_with_session",
+            "app.pipelines.enrichment.lead.process_company_with_session",
             new_callable=AsyncMock,
             return_value=company_result,
         ) as mock_process_company,
@@ -306,12 +306,12 @@ async def test_run_webartsy_lead_pipeline_keeps_company_without_website(
 
     with (
         patch(
-            "app.pipelines.webartsy.lead.run_business_discovery_pipeline",
+            "app.pipelines.enrichment.lead.run_business_discovery_pipeline",
             new_callable=AsyncMock,
             return_value=discovery_result,
         ),
         patch(
-            "app.pipelines.webartsy.lead.process_company_with_session",
+            "app.pipelines.enrichment.lead.process_company_with_session",
             new_callable=AsyncMock,
             return_value=company_result,
         ) as mock_process_company,
@@ -456,12 +456,12 @@ async def test_run_webartsy_lead_pipeline_converts_all_discovered_companies_to_w
 
     with (
         patch(
-            "app.pipelines.webartsy.lead.run_business_discovery_pipeline",
+            "app.pipelines.enrichment.lead.run_business_discovery_pipeline",
             new_callable=AsyncMock,
             return_value=discovery_result,
         ),
         patch(
-            "app.pipelines.webartsy.lead.process_company_with_session",
+            "app.pipelines.enrichment.lead.process_company_with_session",
             new_callable=AsyncMock,
             side_effect=fake_process_company,
         ) as mock_process_company,

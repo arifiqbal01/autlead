@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/company/stages/website.py
+# app/pipelines/enrichment/company/stages/website.py
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from app.pipelines.webartsy.company.lifecycle import (
 from app.providers.crawling.crawl4ai_provider import (
     Crawl4AICrawlingProvider,
 )
-from app.state.pipeline.webartsy import (
+from app.state.pipeline.enrichment import (
     WebArtsyStage,
     mark_stage_completed,
     mark_stage_failed,

@@ -2,7 +2,7 @@ from enum import StrEnum
 
 
 
-class WebArtsyStageStatus(StrEnum):
+class EnrichmentStageStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"

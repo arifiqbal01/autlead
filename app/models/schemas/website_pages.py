@@ -1,4 +1,4 @@
-# app/models/schemas/website_pages.py
+# app/models/schemas/business_pages.py
 
 from __future__ import annotations
 

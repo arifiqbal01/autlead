@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/stages/performance.py
+# app/pipelines/enrichment/stages/performance.py
 
 from __future__ import annotations
 

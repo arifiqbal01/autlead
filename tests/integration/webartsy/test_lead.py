@@ -1,4 +1,4 @@
-# tests/integration/webartsy/test_lead.py
+# tests/integration/enrichment/test_lead.py
 
 from __future__ import annotations
 

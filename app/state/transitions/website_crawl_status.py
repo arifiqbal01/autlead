@@ -37,7 +37,11 @@ VALID_TRANSITIONS: dict[
         WebsiteCrawlStatus.FAILED,
     },
 
-    WebsiteCrawlStatus.COMPLETED: set(),
+    # A COMPLETED crawl may become stale after the retention
+    # period expires. In that case, a new crawl starts directly.
+    WebsiteCrawlStatus.COMPLETED: {
+        WebsiteCrawlStatus.RUNNING,
+    },
 }
 
 

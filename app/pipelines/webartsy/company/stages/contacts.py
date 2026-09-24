@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/stages/contacts.py
+# app/pipelines/enrichment/stages/contacts.py
 
 from __future__ import annotations
 

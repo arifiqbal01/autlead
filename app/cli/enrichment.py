@@ -11,9 +11,11 @@ from app.bootstrap.providers import (
     create_wappalyzer_provider,
 )
 from app.core.logging import get_logger
-from app.pipelines.webartsy.existing_companies import (
-    run_webartsy_existing_companies_pipeline,
+from app.pipelines.enrichment.core import (
+    EnrichmentPipelineResult,
+    run_enrichment_pipeline,
 )
+
 
 logger = get_logger(__name__)
 
@@ -24,7 +26,7 @@ def build_parser(
     if parser is None:
         parser = argparse.ArgumentParser(
             description=(
-                "Run WebArtsy enrichment against companies "
+                "Run enrichment against companies "
                 "already stored in PostgreSQL."
             ),
         )
@@ -100,21 +102,27 @@ def build_parser(
     parser.add_argument(
         "--phone-region",
         default=None,
-        help="Phone normalization region, e.g. NL, GB, PK.",
+        help=(
+            "Phone normalization region, e.g. NL, GB, PK."
+        ),
     )
 
     parser.add_argument(
         "--retention-days",
         type=int,
         default=30,
-        help="Website crawl retention period.",
+        help=(
+            "Website crawl retention period."
+        ),
     )
 
     parser.add_argument(
         "--timeout",
         type=int,
         default=30,
-        help="Per-company website/network timeout.",
+        help=(
+            "Per-company website/network timeout."
+        ),
     )
 
     parser.add_argument(
@@ -142,15 +150,18 @@ def build_parser(
         type=int,
         default=None,
         help=(
-            "Maximum number of persisted people with known "
-            "emails to verify per company. Defaults to all."
+            "Maximum number of persisted people to process "
+            "for email enrichment per company. "
+            "Defaults to all."
         ),
     )
 
     parser.add_argument(
         "--language",
         default="nl",
-        help="Language used for people analysis.",
+        help=(
+            "Language used for people analysis."
+        ),
     )
 
     return parser
@@ -179,10 +190,12 @@ async def run(
         create_email_verification_provider()
     )
 
+    # PageSpeed currently provides both performance
+    # and SEO analysis.
     seo_provider = performance_provider
 
     logger.info(
-        "webartsy_existing_cli_started",
+        "enrichment_cli_started",
         start_from=(
             args.start_from.isoformat()
             if args.start_from is not None
@@ -230,47 +243,44 @@ async def run(
         llm_provider="groq",
     )
 
-    result = await run_webartsy_existing_companies_pipeline(
+    result = await run_enrichment_pipeline(
         crawler_provider=crawler_provider,
         technology_provider=technology_provider,
         performance_provider=performance_provider,
         seo_provider=seo_provider,
         email_provider=email_provider,
         groq_provider=groq_provider,
-
         start_from=args.start_from,
         after_company_id=args.after_company_id,
-
         batch_size=args.batch_size,
         max_companies=args.max_companies,
-
         company_workers=args.company_workers,
-        company_queue_size=args.company_queue_size,
-        company_retries=args.company_retries,
-
+        company_queue_size=(
+            args.company_queue_size
+        ),
+        company_retries=(
+            args.company_retries
+        ),
         phone_region=args.phone_region,
         source_id=None,
-
-        retention_days=args.retention_days,
+        retention_days=(
+            args.retention_days
+        ),
         timeout=args.timeout,
-
         decision_maker_limit=(
             args.decision_maker_limit
         ),
-
         person_email_limit=(
             args.person_email_limit
         ),
-
         business_page_limit=(
             args.business_page_limit
         ),
-
         language=args.language,
     )
 
     logger.info(
-        "webartsy_existing_cli_completed",
+        "enrichment_cli_completed",
         selected=result.selected,
         succeeded=result.succeeded,
         failed=result.failed,
@@ -280,7 +290,9 @@ async def run(
         companies_without_website=(
             result.companies_without_website
         ),
-        people_found=result.people_found,
+        people_found=(
+            result.people_found
+        ),
         decision_makers_found=(
             result.decision_makers_found
         ),
@@ -297,13 +309,13 @@ async def run(
 
 
 def print_result(
-    result,
+    result: EnrichmentPipelineResult,
     *,
     args: argparse.Namespace,
 ) -> None:
     print()
     print("=" * 80)
-    print("WebArtsy Existing Companies Pipeline")
+    print("Enrichment Pipeline")
     print("=" * 80)
 
     print()
@@ -345,6 +357,21 @@ def print_result(
     )
 
     print(
+        f"  Phone region:      "
+        f"{args.phone_region or '-'}"
+    )
+
+    print(
+        f"  Retention days:    "
+        f"{args.retention_days}"
+    )
+
+    print(
+        f"  Timeout:           "
+        f"{args.timeout}"
+    )
+
+    print(
         f"  Business pages:    "
         f"{args.business_page_limit}"
     )
@@ -356,7 +383,11 @@ def print_result(
 
     print(
         f"  Person emails:     "
-        f"{args.person_email_limit if args.person_email_limit is not None else 'all'}"
+        f"{(
+            args.person_email_limit
+            if args.person_email_limit is not None
+            else 'all'
+        )}"
     )
 
     print(

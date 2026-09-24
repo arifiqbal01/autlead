@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/models.py
+# app/pipelines/enrichment/models.py
 
 from __future__ import annotations
 

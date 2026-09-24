@@ -6,11 +6,11 @@ import asyncio
 from app.cli import (
     build_acquisition_parser,
     build_email_send_parser,
-    build_webartsy_existing_parser,
+    build_enrichment_parser,
     build_webartsy_saved_parser,
     run_acquisition,
     run_email_send,
-    run_webartsy_existing,
+    run_enrichment,
     run_webartsy_saved,
 )
 from app.core.logging import configure_logging
@@ -40,28 +40,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # ---------------------------------------------------------
-    # WebArtsy existing PostgreSQL companies
-    # Temporary until enrichment refactor
+    # Enrichment
     # ---------------------------------------------------------
 
-    webartsy_existing_parser = subparsers.add_parser(
-        "webartsy-existing",
+    enrichment_parser = subparsers.add_parser(
+        "enrichment",
         help=(
-            "Run WebArtsy enrichment against companies "
-            "already stored in PostgreSQL."
+            "Enrich companies already stored "
+            "in PostgreSQL."
         ),
     )
 
-    build_webartsy_existing_parser(
-        parser=webartsy_existing_parser,
+    build_enrichment_parser(
+        parser=enrichment_parser,
     )
 
     # ---------------------------------------------------------
-    # WebArtsy saved data export
+    # Saved enrichment data export
+    # Temporary WebArtsy-specific export
     # ---------------------------------------------------------
 
     webartsy_saved_parser = subparsers.add_parser(
-        "webartsy-saved",
+        "enrichment-saved",
         help=(
             "Export already-saved WebArtsy data "
             "without calling providers."
@@ -96,11 +96,11 @@ async def async_main() -> None:
         await run_acquisition(args)
         return
 
-    if args.command == "webartsy-existing":
-        await run_webartsy_existing(args)
+    if args.command == "enrichment":
+        await run_enrichment(args)
         return
 
-    if args.command == "webartsy-saved":
+    if args.command == "enrichment-saved":
         await run_webartsy_saved(args)
         return
 
@@ -109,7 +109,7 @@ async def async_main() -> None:
         return
 
     parser.error(
-        f"Unknown command: {args.command}",
+        f"Unknown command: {args.command}"
     )
 
 

@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/stages/__init__.py
+# app/pipelines/enrichment/stages/__init__.py
 
 from app.pipelines.webartsy.company.stages.business_pages import (
     run_business_pages_stage,

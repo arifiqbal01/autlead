@@ -1,4 +1,4 @@
-# app/pipelines/webartsy/company/__init__.py
+# app/pipelines/enrichment/company/__init__.py
 
 from .company import (
     process_company_with_session,
