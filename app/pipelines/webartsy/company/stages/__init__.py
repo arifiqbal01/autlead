@@ -1,8 +1,5 @@
 # app/pipelines/webartsy/stages/__init__.py
 
-from app.pipelines.webartsy.company.stages.business_discovery import (
-    run_business_discovery_stage,
-)
 from app.pipelines.webartsy.company.stages.business_pages import (
     run_business_pages_stage,
 )
@@ -27,7 +24,6 @@ from app.pipelines.webartsy.company.stages.website import (
 
 
 __all__ = [
-    "run_business_discovery_stage",
     "run_business_pages_stage",
     "run_contacts_stage",
     "run_people_stage",

@@ -4,14 +4,12 @@ import argparse
 import asyncio
 
 from app.cli import (
-    build_discovery_parser,
-    build_webartsy_existing_parser,
-    build_webartsy_parser,
-    build_webartsy_saved_parser,
+    build_acquisition_parser,
     build_email_send_parser,
+    build_webartsy_existing_parser,
+    build_webartsy_saved_parser,
+    run_acquisition,
     run_email_send,
-    run_discovery,
-    run_webartsy,
     run_webartsy_existing,
     run_webartsy_saved,
 )
@@ -29,46 +27,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # ---------------------------------------------------------
-    # Discovery
+    # Acquisition
     # ---------------------------------------------------------
 
-    discovery_parser = subparsers.add_parser(
-        "discovery",
-        help="Run the business discovery pipeline.",
+    acquisition_parser = subparsers.add_parser(
+        "acquisition",
+        help="Run the business acquisition pipeline.",
     )
 
-    build_discovery_parser(
-        parser=discovery_parser,
-    )
-
-    # ---------------------------------------------------------
-    # WebArtsy discovery + enrichment
-    # ---------------------------------------------------------
-
-    webartsy_parser = subparsers.add_parser(
-        "webartsy",
-        help=(
-            "Discover businesses and run the full "
-            "WebArtsy enrichment pipeline."
-        ),
-    )
-
-    build_webartsy_parser(
-        parser=webartsy_parser,
+    build_acquisition_parser(
+        parser=acquisition_parser,
     )
 
     # ---------------------------------------------------------
     # WebArtsy existing PostgreSQL companies
+    # Temporary until enrichment refactor
     # ---------------------------------------------------------
 
-    webartsy_existing_parser = (
-        subparsers.add_parser(
-            "webartsy-existing",
-            help=(
-                "Run WebArtsy enrichment against companies "
-                "already stored in PostgreSQL."
-            ),
-        )
+    webartsy_existing_parser = subparsers.add_parser(
+        "webartsy-existing",
+        help=(
+            "Run WebArtsy enrichment against companies "
+            "already stored in PostgreSQL."
+        ),
     )
 
     build_webartsy_existing_parser(
@@ -79,14 +60,12 @@ def build_parser() -> argparse.ArgumentParser:
     # WebArtsy saved data export
     # ---------------------------------------------------------
 
-    webartsy_saved_parser = (
-        subparsers.add_parser(
-            "webartsy-saved",
-            help=(
-                "Export already-saved WebArtsy data "
-                "without calling providers."
-            ),
-        )
+    webartsy_saved_parser = subparsers.add_parser(
+        "webartsy-saved",
+        help=(
+            "Export already-saved WebArtsy data "
+            "without calling providers."
+        ),
     )
 
     build_webartsy_saved_parser(
@@ -99,9 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     email_send_parser = subparsers.add_parser(
         "email-send",
-        help=(
-            "Send email to eligible persisted contacts."
-        ),
+        help="Send email to eligible persisted contacts.",
     )
 
     build_email_send_parser(
@@ -115,34 +92,20 @@ async def async_main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    if args.command == "discovery":
-        await run_discovery(
-            args
-        )
-        return
-
-    if args.command == "webartsy":
-        await run_webartsy(
-            args
-        )
+    if args.command == "acquisition":
+        await run_acquisition(args)
         return
 
     if args.command == "webartsy-existing":
-        await run_webartsy_existing(
-            args
-        )
+        await run_webartsy_existing(args)
         return
 
     if args.command == "webartsy-saved":
-        await run_webartsy_saved(
-            args
-        )
+        await run_webartsy_saved(args)
         return
 
     if args.command == "email-send":
-        await run_email_send(
-            args
-        )
+        await run_email_send(args)
         return
 
     parser.error(

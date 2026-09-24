@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.models.schemas import DiscoveryQuery
-from app.pipelines.common.business_discovery import (
+from app.pipelines.acquisition.business_discovery import (
     BusinessDiscoveryPipelineResult,
     run_business_discovery_pipeline,
 )

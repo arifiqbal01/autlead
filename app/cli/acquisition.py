@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import argparse
 
-from app.core.database.session import SessionFactory
-from app.core.logging import get_logger
-from app.models.schemas import DiscoveryQuery
-from app.pipelines.common import run_business_discovery_pipeline
-from app.providers.discovery.gosom import (
-    GosomGoogleMapsDiscoveryProvider,
+from app.bootstrap.providers import (
+    create_gosom_discovery_provider,
 )
-
+from app.core.logging import get_logger
+from app.pipelines.acquisition.models import (
+    DiscoveryQuery,
+)
+from app.pipelines.acquisition.pipeline import (
+    run_acquisition_pipeline,
+)
 
 logger = get_logger(__name__)
 
@@ -19,7 +21,7 @@ def build_parser(
 ) -> argparse.ArgumentParser:
     if parser is None:
         parser = argparse.ArgumentParser(
-            description="Run the Autlead business discovery pipeline.",
+            description="Run the Autlead acquisition pipeline.",
         )
 
     parser.add_argument(
@@ -113,7 +115,7 @@ async def run(args: argparse.Namespace) -> None:
         limit=args.limit,
     )
 
-    provider = GosomGoogleMapsDiscoveryProvider(
+    provider = create_gosom_discovery_provider(
         proxy=args.proxy,
         concurrency=args.workers,
         depth=args.depth,
@@ -126,7 +128,7 @@ async def run(args: argparse.Namespace) -> None:
     )
 
     logger.info(
-        "discovery_cli_started",
+        "acquisition_cli_started",
         query=args.query,
         location=args.location,
         limit=args.limit,
@@ -140,15 +142,13 @@ async def run(args: argparse.Namespace) -> None:
         browser_pool_size=args.browser_pool_size,
     )
 
-    async with SessionFactory() as session:
-        result = await run_business_discovery_pipeline(
-            provider=provider,
-            query=query,
-            session=session,
-        )
+    result = await run_acquisition_pipeline(
+        provider=provider,
+        query=query,
+    )
 
     logger.info(
-        "discovery_pipeline_completed",
+        "acquisition_cli_completed",
         found=result.found,
         new=result.new,
         duplicates=result.duplicates,
@@ -157,7 +157,7 @@ async def run(args: argparse.Namespace) -> None:
 
     print()
     print("=" * 80)
-    print("Autlead Business Discovery")
+    print("Autlead Acquisition")
     print("=" * 80)
 
     print()

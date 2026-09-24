@@ -1,9 +1,5 @@
 # app/pipelines/common/__init__.py
 
-from app.pipelines.common.business_discovery import (
-    BusinessDiscoveryPipelineResult,
-    run_business_discovery_pipeline,
-)
 from app.pipelines.common.contacts import (
     ContactAnalysisResult,
     analyze_contacts,
@@ -30,9 +26,6 @@ from .website_pages import WebsitePageCollectionResult, collect_business_pages
 
 
 __all__ = [
-    # Business discovery
-    "BusinessDiscoveryPipelineResult",
-    "run_business_discovery_pipeline",
 
     # Website crawling
     "WebsiteAnalysisResult",

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.pipelines.common.business_discovery import (
+from app.pipelines.acquisition.business_discovery import (
     BusinessDiscoveryPipelineResult,
     DiscoveredCompany,
 )
