@@ -6,7 +6,7 @@ from app.pipelines.acquisition.business_discovery import (
     BusinessDiscoveryResult,
     run_business_discovery,
 )
-from app.pipelines.acquisition.models import (
+from app.models.schemas import (
     DiscoveryQuery,
 )
 from app.providers.discovery.protocol import (

@@ -1,0 +1,54 @@
+version: 1
+
+name: nl_healthcare
+
+country:
+  code: NL
+  name: Netherlands
+
+industry: healthcare
+
+cities:
+  amsterdam:
+    name: Amsterdam
+    grid_bbox: "52.278,4.728,52.432,5.016"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  rotterdam:
+    name: Rotterdam
+    grid_bbox: "..."
+    grid_cell_km: 1.5
+    zoom: 16
+
+  utrecht:
+    name: Utrecht
+    grid_bbox: "..."
+    grid_cell_km: 1.5
+    zoom: 16
+
+targets:
+  - segment: dental
+    priority: high
+
+    keywords:
+      - tandarts
+      - tandartspraktijk
+      - orthodontist
+
+    cities:
+      - amsterdam
+      - rotterdam
+      - utrecht
+
+  - segment: physiotherapy
+    priority: high
+
+    keywords:
+      - fysiotherapeut
+      - fysiotherapie
+
+    cities:
+      - amsterdam
+      - rotterdam
+      - utrecht

@@ -14,6 +14,7 @@ from app.models.persistence.person_observation import PersonObservation
 from app.models.persistence.webartsy_stage_state import WebArtsyStageState
 from app.models.persistence.person_email_observation import PersonEmailObservation
 from app.models.persistence.email_message import EmailMessage
+from app.models.persistence.acquisition_run import AcquisitionRun
 
 __all__ = [
     "Company",
@@ -31,4 +32,5 @@ __all__ = [
     "PersonEmailObservation",
     "WebArtsyStageState",
     "EmailMessage",
+    "AcquisitionRun",
 ]
