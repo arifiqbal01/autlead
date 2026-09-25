@@ -17,38 +17,190 @@ cities:
 
   rotterdam:
     name: Rotterdam
-    grid_bbox: "..."
+    grid_bbox: "51.850,4.360,52.010,4.620"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  den_haag:
+    name: Den Haag
+    grid_bbox: "52.000,4.180,52.140,4.420"
     grid_cell_km: 1.5
     zoom: 16
 
   utrecht:
     name: Utrecht
-    grid_bbox: "..."
+    grid_bbox: "52.030,5.030,52.160,5.220"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  eindhoven:
+    name: Eindhoven
+    grid_bbox: "51.380,5.380,51.520,5.570"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  groningen:
+    name: Groningen
+    grid_bbox: "53.160,6.480,53.280,6.700"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  tilburg:
+    name: Tilburg
+    grid_bbox: "51.520,4.950,51.650,5.180"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  almere:
+    name: Almere
+    grid_bbox: "52.300,5.100,52.450,5.340"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  breda:
+    name: Breda
+    grid_bbox: "51.520,4.650,51.650,4.880"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  nijmegen:
+    name: Nijmegen
+    grid_bbox: "51.790,5.760,51.900,5.960"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  arnhem:
+    name: Arnhem
+    grid_bbox: "51.930,5.800,52.060,6.020"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  haarlem:
+    name: Haarlem
+    grid_bbox: "52.330,4.580,52.430,4.700"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  amersfoort:
+    name: Amersfoort
+    grid_bbox: "52.100,5.300,52.220,5.480"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  enschede:
+    name: Enschede
+    grid_bbox: "52.170,6.780,52.300,7.020"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  leiden:
+    name: Leiden
+    grid_bbox: "52.110,4.400,52.200,4.570"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  delft:
+    name: Delft
+    grid_bbox: "51.950,4.300,52.050,4.450"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  maastricht:
+    name: Maastricht
+    grid_bbox: "50.790,5.620,50.910,5.790"
+    grid_cell_km: 1.5
+    zoom: 16
+
+  zwolle:
+    name: Zwolle
+    grid_bbox: "52.450,6.000,52.580,6.200"
     grid_cell_km: 1.5
     zoom: 16
 
 targets:
+  # ------------------------------------------------------------
+  # HIGH PRIORITY
+  # ------------------------------------------------------------
+
   - segment: dental
     priority: high
-
     keywords:
       - tandarts
       - tandartspraktijk
       - orthodontist
-
-    cities:
-      - amsterdam
-      - rotterdam
-      - utrecht
+      - mondhygiënist
+      - implantologie
 
   - segment: physiotherapy
     priority: high
-
     keywords:
       - fysiotherapeut
       - fysiotherapie
 
+  - segment: psychology
+    priority: high
+    keywords:
+      - psycholoog
+      - psychologenpraktijk
+
+  - segment: musculoskeletal
+    priority: high
+    keywords:
+      - chiropractor
+      - osteopaat
+      - podotherapeut
+
+  - segment: skin_aesthetic
+    priority: high
+    keywords:
+      - huidkliniek
+      - cosmetische kliniek
+      - esthetische kliniek
+
+  - segment: eye_care
+    priority: high
+    keywords:
+      - oogkliniek
+
+  # ------------------------------------------------------------
+  # MEDIUM PRIORITY
+  # ------------------------------------------------------------
+
+  - segment: primary_care
+    priority: medium
+    keywords:
+      - huisartsenpraktijk
+      - gezondheidscentrum
+      - medisch centrum
+      - privékliniek
+      - zorgcentrum
+
+  - segment: allied_health
+    priority: medium
+    keywords:
+      - logopedist
+      - ergotherapeut
+      - diëtist
+      - revalidatiecentrum
+
+  - segment: maternity
+    priority: medium
+    keywords:
+      - verloskundige
+      - verloskundigenpraktijk
+
+  - segment: alternative_care
+    priority: medium
+    keywords:
+      - acupuncturist
     cities:
       - amsterdam
       - rotterdam
+      - den_haag
       - utrecht
+
+  - segment: hearing_vision
+    priority: medium
+    keywords:
+      - gehoorcentrum
+      - optometrist

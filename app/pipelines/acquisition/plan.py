@@ -89,7 +89,13 @@ async def run_acquisition_plan(
     )
 
     for target in targets:
-        for city_key in target.cities:
+        city_keys = (
+            target.cities
+            if target.cities is not None
+            else plan.cities.keys()
+        )
+
+        for city_key in city_keys:
             city = plan.cities[city_key]
 
             for keyword in target.keywords:

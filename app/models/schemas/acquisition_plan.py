@@ -58,7 +58,7 @@ class AcquisitionTarget(BaseModel):
     priority: AcquisitionPriority = AcquisitionPriority.MEDIUM
 
     keywords: list[str] = Field(min_length=1)
-    cities: list[str] = Field(min_length=1)
+    cities: list[str] | None = None
 
     @field_validator("segment")
     @classmethod
