@@ -234,12 +234,9 @@ async def process_company(
         operation=lambda: analyze_technology(
             session=session,
             provider=technology_provider,
-            websites=[
-                (
-                    company_id,
-                    website,
-                )
-            ],
+            company_id=company_id,
+            company_name=company_name,
+            website=website,
             source_id=source_id,
             timeout=timeout,
         ),
@@ -256,16 +253,11 @@ async def process_company(
         stage=STAGE_PERFORMANCE,
         operation=lambda: analyze_website_performance(
             session=session,
-            performance_provider=(
-                performance_provider
-            ),
+            performance_provider=performance_provider,
             seo_provider=seo_provider,
-            websites=[
-                (
-                    company_id,
-                    website,
-                )
-            ],
+            company_id=company_id,
+            company_name=company_name,
+            website=website,
             source_id=source_id,
         ),
     )
@@ -417,11 +409,15 @@ async def process_company(
         company_name=company_name,
         website=website,
         pages=len(pages),
-        people=len(
-            people_result.people
+        people=(
+            len(people_result.people)
+            if people_result is not None
+            else None
         ),
         decision_makers=(
             people_result.decision_maker_count
+            if people_result is not None
+            else None
         ),
     )
 
