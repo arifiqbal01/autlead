@@ -55,31 +55,48 @@ async def refine_people_with_ai(
     homepage_url: str,
     pages: list,
     candidates: list[PersonCandidate],
-    max_context_chars: int = 50_000,
+    max_context_chars: int = 12_000,
 ) -> list[AIRefinedPerson]:
     """
     Refine deterministic person candidates using Groq.
 
-    Groq is called once per company.
+    Groq is called once per company only when deterministic
+    person candidates were extracted.
 
     Groq may:
-        - validate candidates
+        - validate extracted candidates
         - remove clear false positives
         - correct supported names/titles
         - merge duplicates
-        - recover clearly supported missed people
         - interpret professional roles
         - assess decision-maker authority
+
+    Groq is not responsible for discovering arbitrary people
+    from the entire website.
 
     Final Autlead decision-maker qualification remains downstream
     in policy code.
     """
 
+    # Deterministic extraction owns person discovery.
+    # If nothing was extracted, there is nothing for the LLM
+    # refinement stage to validate or classify.
+    if not candidates:
+        return []
+
+    # Keep website context deliberately bounded.
+    #
+    # This is temporary supporting evidence for candidate
+    # validation/classification. It must not become an entire
+    # website dump because provider token limits are substantially
+    # smaller than arbitrary crawled-page content.
     website_text = _build_people_context(
         pages,
         max_chars=max_context_chars,
     )
 
+    # Preserve deterministic candidates when no useful website
+    # context is available.
     if not website_text:
         return _fallback_people(
             candidates
