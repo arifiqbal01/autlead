@@ -60,7 +60,7 @@ async function main() {
             from: payload.smtp_from ?? "verify@webartsy.nl",
             heloHost: payload.smtp_helo_host ?? "webartsy.nl",
             timeoutMs: payload.smtp_timeout_ms ?? 10000,
-            detectCatchAll: true,
+            detectCatchAll: payload.detect_catch_all ?? true,
         },
     });
 

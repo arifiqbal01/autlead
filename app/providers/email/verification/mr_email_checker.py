@@ -59,14 +59,12 @@ class MrEmailCheckerProvider:
         request: EmailVerificationRequest,
     ) -> EmailVerificationResult:
         payload = {
-            "outreach": request.email,
-            "options": {
-                "smtp": self._smtp_enabled,
-                "smtpFrom": self._smtp_from,
-                "smtpHeloHost": self._smtp_helo_host,
-                "smtpTimeoutMs": self._smtp_timeout_ms,
-                "detectCatchAll": self._detect_catch_all,
-            },
+            "email": request.email,
+            "smtp_enabled": self._smtp_enabled,
+            "smtp_from": self._smtp_from,
+            "smtp_helo_host": self._smtp_helo_host,
+            "smtp_timeout_ms": self._smtp_timeout_ms,
+            "detect_catch_all": self._detect_catch_all,
         }
 
         payload_bytes = json.dumps(
@@ -272,10 +270,8 @@ class MrEmailCheckerProvider:
                     )
 
             return EmailVerificationResult(
-                email=raw["outreach"],
-                canonical=raw[
-                    "canonical"
-                ],
+                email=raw["email"],
+                canonical=raw["canonical"],
                 status=status,
                 valid=valid,
                 score=raw["score"],

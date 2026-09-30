@@ -133,7 +133,7 @@ async def enrich_person_emails(
     candidate_limit: int = 8,
 ) -> PersonEmailAnalysisResult:
     """
-    Enrich persisted people with verified outreach addresses.
+    Enrich persisted people with verified email addresses.
 
     Flow:
 
@@ -141,7 +141,7 @@ async def enrich_person_emails(
             ↓
         build PersonEmailTarget[]
             ↓
-        existing outreach?
+        existing email?
             ├── verified already → skip
             └── otherwise verify
             ↓
@@ -153,7 +153,7 @@ async def enrich_person_emails(
             ↓
         persist verification evidence
             ↓
-        assign first qualified outreach to Person.outreach
+        assign first qualified email to Person.email
 
     Email verification applies independently of decision-maker
     classification.
@@ -282,7 +282,7 @@ async def analyze_person_emails(
         )
 
         # ------------------------------------------------------------------
-        # 1. Existing outreach
+        # 1. Existing email
         # ------------------------------------------------------------------
 
         existing_email: str | None = None
@@ -654,7 +654,7 @@ async def _load_people(
     """
     Load persisted people for one company.
 
-    People without an outreach are intentionally included because deterministic
+    People without an email are intentionally included because deterministic
     candidates can be generated from their name and the company domain.
     """
 
@@ -813,7 +813,7 @@ async def _update_person_email(
     email: str,
 ) -> None:
     """
-    Store a qualified outreach on the persisted Person.
+    Store a qualified verified email on the persisted Person.
 
     Transaction ownership belongs to the caller.
     """
@@ -823,7 +823,7 @@ async def _update_person_email(
             """
             UPDATE public.people
             SET
-                outreach = :outreach,
+                email = :email,
                 updated_at = NOW()
             WHERE id = :person_id
               AND company_id = :company_id
@@ -832,7 +832,7 @@ async def _update_person_email(
         {
             "person_id": person_id,
             "company_id": company_id,
-            "outreach": email,
+            "email": email,
         },
     )
 
