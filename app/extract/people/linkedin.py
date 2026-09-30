@@ -182,7 +182,6 @@ def normalize_linkedin_url(
     Only /in/ URLs are accepted.
 
     Examples:
-
         https://linkedin.com/in/john-smith/
             -> https://www.linkedin.com/in/john-smith
 
@@ -202,13 +201,20 @@ def normalize_linkedin_url(
     ):
         value = f"https://{value}"
 
-    parsed = urlparse(
-        value
-    )
+    try:
+        parsed = urlparse(
+            value
+        )
 
-    hostname = (
-        parsed.hostname or ""
-    ).casefold().removeprefix("www.")
+        hostname = (
+            parsed.hostname or ""
+        ).casefold().removeprefix("www.")
+
+    except ValueError:
+        # Scraped hrefs may contain malformed placeholders such as
+        # [#DSR_FORM_URL#], which urllib interprets as invalid
+        # bracketed/IPv6 host syntax.
+        return None
 
     if hostname != "linkedin.com":
         return None
