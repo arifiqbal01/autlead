@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.load.postgres.website_crawls import (
     get_last_website_crawl,
+    get_last_website_crawl_for_url,
     get_website_crawl_content,
     load_website_crawl,
 )
@@ -28,6 +29,7 @@ from app.state.transitions.crawling_state import (
     mark_website_crawl_failed,
     mark_website_crawl_started,
 )
+
 
 
 logger = get_logger(__name__)
@@ -305,16 +307,82 @@ async def crawl_website_page(
     company_id: int,
     url: str,
     provider: CrawlingProvider,
+    retention_days: int,
     timeout: int = 30,
 ) -> WebsitePageCrawlResult:
     """
-    Crawl and persist one selected internal website page.
+    Load or crawl one selected internal website page.
 
-    Unlike ``analyze_website()``, this operation does not modify
-    WebsiteCrawlState and does not apply root website retention.
+    If the same company URL was crawled within the retention window,
+    persisted content is rehydrated instead of making another network
+    request.
+
+    Secondary pages do not modify the company-level WebsiteCrawlState.
 
     The caller owns the transaction boundary.
     """
+
+    existing_crawl = await get_last_website_crawl_for_url(
+        session,
+        company_id=company_id,
+        url=url,
+    )
+
+    now = datetime.now(UTC)
+
+    # ------------------------------------------------------------------
+    # Retention
+    # ------------------------------------------------------------------
+
+    if existing_crawl is not None:
+        should_recrawl = should_recrawl_website(
+            WebsiteCrawlRetentionContext(
+                collected_at=existing_crawl.collected_at,
+                max_age=timedelta(days=retention_days),
+            ),
+            now=now,
+        )
+
+        if not should_recrawl:
+            logger.info(
+                "website_page_crawl_reused",
+                company_id=company_id,
+                url=url,
+                crawl_id=existing_crawl.id,
+                collected_at=existing_crawl.collected_at,
+                retention_days=retention_days,
+            )
+
+            content = await get_website_crawl_content(
+                session=session,
+                crawl=existing_crawl,
+            )
+
+            return WebsitePageCrawlResult(
+                content=content,
+                crawl_id=existing_crawl.id,
+            )
+
+        logger.info(
+            "website_page_crawl_retention_expired",
+            company_id=company_id,
+            url=url,
+            crawl_id=existing_crawl.id,
+            collected_at=existing_crawl.collected_at,
+            retention_days=retention_days,
+        )
+
+    else:
+        logger.info(
+            "website_page_crawl_required",
+            company_id=company_id,
+            url=url,
+            reason="no_previous_crawl",
+        )
+
+    # ------------------------------------------------------------------
+    # Crawl
+    # ------------------------------------------------------------------
 
     logger.info(
         "website_page_crawl_started",
@@ -341,6 +409,10 @@ async def crawl_website_page(
         text_chars=len(content.text or ""),
         links=len(content.links),
     )
+
+    # ------------------------------------------------------------------
+    # Persist
+    # ------------------------------------------------------------------
 
     crawl = await load_website_crawl(
         session=session,

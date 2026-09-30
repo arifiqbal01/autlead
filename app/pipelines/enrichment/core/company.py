@@ -289,6 +289,7 @@ async def process_company(
             company_name=company_name,
             homepage=homepage,
             provider=crawler_provider,
+            retention_days=retention_days,
             timeout=timeout,
             limit=business_page_limit,
         )
@@ -503,12 +504,17 @@ async def _run_business_pages_stage(
     company_name: str,
     homepage,
     provider: Crawl4AICrawlingProvider,
+    retention_days: int,
     timeout: int,
     limit: int,
 ):
     """
-    Business pages must be collected/rehydrated because downstream
-    contacts and people enrichment require their content.
+    Business pages must always be available to downstream stages.
+
+    The checkpoint controls stage-state transitions. The business-page
+    collector is still called when the stage is already complete so it
+    can rehydrate retained page content without unnecessarily crawling
+    the website again.
     """
 
     should_run = await stage_should_run(
@@ -531,6 +537,7 @@ async def _run_business_pages_stage(
             company_id=company_id,
             homepage=homepage,
             provider=provider,
+            retention_days=retention_days,
             timeout=timeout,
             limit=limit,
         )

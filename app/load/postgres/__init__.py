@@ -1,5 +1,9 @@
 from app.load.postgres.companies import load_business_record
-from app.load.postgres.website_crawls import load_website_crawl
+from app.load.postgres.website_crawls import (
+    load_website_crawl,
+    get_last_website_crawl_for_url,
+    get_last_website_crawl
+)
 from app.load.postgres.website_performance import load_website_performance
 from app.load.postgres.technology_observation import load_technology_observation
 from app.load.postgres.people import load_person
@@ -17,4 +21,6 @@ __all__ = [
     "load_person_email_observation",
     "load_email_message",
     "email_was_already_sent",
+    "get_last_website_crawl_for_url",
+    "get_last_website_crawl",
 ]

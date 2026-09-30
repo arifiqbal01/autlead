@@ -98,6 +98,35 @@ async def get_last_website_crawl(
     )
 
 
+async def get_last_website_crawl_for_url(
+    session: AsyncSession,
+    *,
+    company_id: int,
+    url: str,
+) -> WebsiteCrawl | None:
+    """
+    Return the most recent persisted crawl for a specific company URL.
+
+    Used for secondary/internal page retention so recently crawled pages
+    can be rehydrated without another network request.
+    """
+
+    result = await session.scalars(
+        select(WebsiteCrawl)
+        .where(
+            WebsiteCrawl.company_id == company_id,
+            WebsiteCrawl.url == url,
+        )
+        .order_by(
+            WebsiteCrawl.collected_at.desc(),
+            WebsiteCrawl.id.desc(),
+        )
+        .limit(1)
+    )
+
+    return result.first()
+
+
 async def _load_crawl_links(
     session: AsyncSession,
     crawl: WebsiteCrawl,

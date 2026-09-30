@@ -31,6 +31,7 @@ async def collect_business_pages(
     company_id: int,
     homepage: WebsiteContent,
     provider: CrawlingProvider,
+    retention_days: int,
     timeout: int = 30,
     limit: int = 5,
 ) -> WebsitePageCollectionResult:
@@ -110,6 +111,7 @@ async def collect_business_pages(
                 company_id=company_id,
                 url=url,
                 provider=provider,
+                retention_days=retention_days,
                 timeout=timeout,
             )
 
