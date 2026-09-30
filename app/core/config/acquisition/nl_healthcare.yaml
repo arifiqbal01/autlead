@@ -102,7 +102,7 @@ cities:
   delft:
     name: Delft
     grid_bbox: "51.950,4.300,52.050,4.450"
-    grid_cell_km: 1.5
+    grid_cell_km: 3.0
     zoom: 16
 
   maastricht:

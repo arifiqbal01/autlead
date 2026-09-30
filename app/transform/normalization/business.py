@@ -14,11 +14,25 @@ def normalize_business_record(record: BusinessRecord) -> CompanyCandidate:
         website=website,
         domain=domain,
         phone=normalize_phone(record.phone),
-        country=clean_text(record.country),
+        country=normalize_country(record.country),
         city=clean_text(record.city),
         address=clean_text(record.address),
         category=clean_text(record.category),
     )
+
+
+_COUNTRY_ALIASES = {
+    "nederland": "Netherlands",
+    "netherlands": "Netherlands",
+}
+
+
+def normalize_country(value: str | None) -> str | None:
+    text = clean_text(value)
+    if text is None:
+        return None
+
+    return _COUNTRY_ALIASES.get(text.casefold(), text)
 
 
 def normalize_company_name(value: str) -> str:
