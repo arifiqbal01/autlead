@@ -1,0 +1,95 @@
+name: autlead
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-autlead}
+      POSTGRES_USER: ${POSTGRES_USER:-autlead}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - autlead_postgres:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-autlead} -d ${POSTGRES_DB:-autlead}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    # Intentionally no ports:
+    # PostgreSQL must not be exposed publicly.
+
+    networks:
+      - autlead_internal
+
+  autlead:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: autlead:local
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+
+      DATABASE_URL: >-
+        postgresql+asyncpg://${POSTGRES_USER:-autlead}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-autlead}
+
+      DISCOVERY_RESULTS_ROOT: /app/data/discovery/gosom
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    volumes:
+      # Persistent Autlead working data.
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./output:/app/output
+
+      # Required by providers such as Gosom that currently execute
+      # external Docker containers.
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Gosom Playwright/browser cache volume.
+      - autlead_gmaps_playwright_cache:/opt
+
+    networks:
+      - autlead_internal
+
+    # Conservative initial limits for the 2-OCPU / 12-GB OCI VM.
+    cpus: 1.0
+    mem_limit: 4g
+
+    # No public ports required.
+    #
+    # Keep the container alive/restartable for now.
+    # Replace this with the permanent enrichment worker command
+    # after validating the exact CLI invocation.
+    command: ["python", "-m", "app.main"]
+
+
+networks:
+  autlead_internal:
+    name: autlead_internal
+
+
+volumes:
+  autlead_postgres:
+    name: autlead_postgres
+
+  autlead_gmaps_playwright_cache:
+    name: autlead_gmaps_playwright_cache
