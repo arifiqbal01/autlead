@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import uuid
 from collections.abc import Mapping
 from typing import Any
 
@@ -20,11 +21,17 @@ class WappalyzerTechnologyDetectionProvider:
         docker_command: str = "docker",
         scan_type: str = "full",
         timeout_seconds: int = 30,
+        hard_timeout_grace_seconds: int = 15,
+        memory_limit: str = "1g",
+        cpu_limit: str = "1",
     ) -> None:
         self.image = image
         self.docker_command = docker_command
         self.scan_type = scan_type
         self.timeout_seconds = timeout_seconds
+        self.hard_timeout_grace_seconds = hard_timeout_grace_seconds
+        self.memory_limit = memory_limit
+        self.cpu_limit = cpu_limit
 
     async def detect(
         self,
@@ -37,15 +44,22 @@ class WappalyzerTechnologyDetectionProvider:
             if timeout is not None
             else self.timeout_seconds
         )
+        hard_timeout = scan_timeout + self.hard_timeout_grace_seconds
+
+        container_name = (
+            f"autlead-wappalyzer-{uuid.uuid4().hex}"
+        )
 
         command = self._build_command(
             website=website,
             timeout=scan_timeout,
+            container_name=container_name,
         )
 
         output = await self._run(
             command,
-            timeout=scan_timeout,
+            container_name=container_name,
+            timeout=hard_timeout,
         )
 
         return self._parse_output(
@@ -58,11 +72,20 @@ class WappalyzerTechnologyDetectionProvider:
         *,
         website: str,
         timeout: int,
+        container_name: str,
     ) -> list[str]:
         return [
             self.docker_command,
             "run",
             "--rm",
+            "--name",
+            container_name,
+            "--memory",
+            self.memory_limit,
+            "--memory-swap",
+            self.memory_limit,
+            "--cpus",
+            self.cpu_limit,
             self.image,
             "-i",
             website,
@@ -78,6 +101,7 @@ class WappalyzerTechnologyDetectionProvider:
         self,
         command: list[str],
         *,
+        container_name: str,
         timeout: int,
     ) -> str:
         process = await asyncio.create_subprocess_exec(
@@ -91,9 +115,9 @@ class WappalyzerTechnologyDetectionProvider:
                 process.communicate(),
                 timeout=timeout,
             )
-        except asyncio.TimeoutError:
-            process.kill()
-            await process.wait()
+        except (TimeoutError, asyncio.CancelledError):
+            await self._terminate_process(process)
+            await self._remove_container(container_name)
             raise
 
         if process.returncode != 0:
@@ -116,6 +140,51 @@ class WappalyzerTechnologyDetectionProvider:
         )
 
     @staticmethod
+    async def _terminate_process(
+        process: asyncio.subprocess.Process,
+    ) -> None:
+        if process.returncode is not None:
+            return
+
+        try:
+            process.kill()
+        except ProcessLookupError:
+            return
+
+        await process.wait()
+
+    async def _remove_container(
+        self,
+        container_name: str,
+    ) -> None:
+        """
+        Force-remove the Wappalyzer container.
+
+        Killing the local `docker run` process does not guarantee that the
+        container created by Docker Engine is stopped. Explicit cleanup
+        prevents orphaned Playwright/Chromium containers after timeouts or
+        cancellation.
+        """
+        try:
+            cleanup = await asyncio.create_subprocess_exec(
+                self.docker_command,
+                "rm",
+                "-f",
+                container_name,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+
+            await asyncio.wait_for(
+                cleanup.wait(),
+                timeout=10,
+            )
+        except (TimeoutError, FileNotFoundError, OSError):
+            # Cleanup is best-effort. Preserve the original timeout or
+            # cancellation rather than replacing it with a cleanup failure.
+            return
+
+    @staticmethod
     def _parse_output(
         output: str,
         *,
@@ -129,7 +198,7 @@ class WappalyzerTechnologyDetectionProvider:
             ) from exc
 
         if not isinstance(data, Mapping):
-            raise RuntimeError(
+            raise TypeError(
                 "Wappalyzer returned an invalid result"
             )
 
