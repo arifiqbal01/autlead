@@ -25,6 +25,8 @@ RUN apt-get update \
         ca-certificates \
         curl \
         docker.io \
+        nodejs \
+        npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv.
@@ -39,6 +41,16 @@ RUN uv sync \
     --no-dev \
     --no-install-project
 
+COPY tools/email_verification/package.json \
+     tools/email_verification/package-lock.json \
+     ./tools/email_verification/
+
+RUN cd tools/email_verification \
+    && npm ci --omit=dev
+
+COPY tools/email_verification/runner.mjs \
+     ./tools/email_verification/runner.mjs
+
 # Copy application/package sources.
 COPY app ./app
 COPY alembic ./alembic
@@ -52,6 +64,7 @@ RUN uv sync \
 
 # Install Chromium and the Linux libraries required by Playwright.
 RUN playwright install --with-deps chromium \
+    && patchright install chromium \
     && rm -rf /var/lib/apt/lists/*
 
 # Persistent/runtime directories.
