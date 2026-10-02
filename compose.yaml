@@ -48,15 +48,14 @@ services:
       DATABASE_URL: >-
         postgresql+asyncpg://${POSTGRES_USER:-autlead}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-autlead}
 
-      DISCOVERY_RESULTS_ROOT: /app/data/discovery/gosom
-
+      DISCOVERY_RESULTS_ROOT: /opt/autlead/data/discovery/gosom
     depends_on:
       postgres:
         condition: service_healthy
 
     volumes:
       # Persistent Autlead working data.
-      - ./data:/app/data
+      - /opt/autlead/data:/opt/autlead/data
       - ./logs:/app/logs
       - ./output:/app/output
 
