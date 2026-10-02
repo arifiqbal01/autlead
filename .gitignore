@@ -11,7 +11,7 @@ venv/
 .env
 .env.*
 
-# project internal knowledge
+# Project internal knowledge
 project-internal-knowledge/
 
 !.env.example
@@ -53,8 +53,7 @@ celerybeat-schedule
 
 # Local database/data
 *.sqlite3
-
+*.dump
 
 # Node dependencies
-node_modules/autlead.dump
-*.dump
+node_modules/
