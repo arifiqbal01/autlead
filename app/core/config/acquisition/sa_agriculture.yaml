@@ -1,0 +1,560 @@
+version: 1
+
+name: sa_mordivo_agriculture
+
+country:
+  code: SA
+  name: Saudi Arabia
+
+industry: agriculture
+
+# Targeting strategy:
+# - Focus on commercially operated agricultural businesses and agriculture-adjacent companies.
+# - Prioritize companies likely to benefit from websites/CRM, workflow automation,
+#   ERP/Odoo, inventory/procurement systems, dashboards, reporting and integrations.
+# - Arabic + English keywords are intentional because Saudi business listings use both.
+# - BBoxes are practical discovery areas, not administrative boundaries.
+
+cities:
+  riyadh:
+    name: Riyadh
+    grid_bbox: "24.450,46.400,25.000,47.050"
+    grid_cell_km: 3.0
+    zoom: 15
+
+  al_kharj:
+    name: Al Kharj
+    grid_bbox: "24.050,46.950,24.300,47.300"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  buraydah:
+    name: Buraydah
+    grid_bbox: "26.200,43.800,26.500,44.150"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  unayzah:
+    name: Unayzah
+    grid_bbox: "26.000,43.900,26.180,44.100"
+    grid_cell_km: 2.0
+    zoom: 15
+
+  al_ahsa:
+    name: Al Ahsa / Hofuf
+    grid_bbox: "25.250,49.450,25.550,49.850"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  dammam:
+    name: Dammam / Khobar / Dhahran
+    grid_bbox: "26.150,49.950,26.550,50.300"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  madinah:
+    name: Madinah
+    grid_bbox: "24.300,39.350,24.650,39.850"
+    grid_cell_km: 3.0
+    zoom: 15
+
+  tabuk:
+    name: Tabuk
+    grid_bbox: "28.250,36.350,28.550,36.750"
+    grid_cell_km: 3.0
+    zoom: 15
+
+  sakaka:
+    name: Sakaka / Al Jouf
+    grid_bbox: "29.750,39.700,30.050,40.050"
+    grid_cell_km: 3.0
+    zoom: 15
+
+  hail:
+    name: Hail
+    grid_bbox: "27.350,41.500,27.700,41.950"
+    grid_cell_km: 3.0
+    zoom: 15
+
+  jazan:
+    name: Jazan
+    grid_bbox: "16.750,42.400,17.100,42.750"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  sabya:
+    name: Sabya
+    grid_bbox: "16.950,42.550,17.250,42.850"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  abha:
+    name: Abha / Khamis Mushait
+    grid_bbox: "18.150,42.350,18.450,42.750"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  al_baha:
+    name: Al Baha
+    grid_bbox: "19.950,41.350,20.150,41.650"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  najran:
+    name: Najran
+    grid_bbox: "17.400,44.000,17.750,44.350"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  taif:
+    name: Taif
+    grid_bbox: "21.150,40.250,21.450,40.650"
+    grid_cell_km: 2.5
+    zoom: 15
+
+  jeddah:
+    name: Jeddah
+    grid_bbox: "21.250,39.000,21.850,39.450"
+    grid_cell_km: 3.0
+    zoom: 15
+
+targets:
+  # ------------------------------------------------------------
+  # HIGH PRIORITY — strongest Mordivo operational/digital fit
+  # ------------------------------------------------------------
+
+  - segment: agricultural_input_dealers_distributors
+    priority: high
+    keywords:
+      - agricultural supplies
+      - agricultural supplier
+      - agricultural inputs
+      - agricultural products distributor
+      - fertilizer supplier
+      - fertilizer distributor
+      - pesticide supplier
+      - pesticide distributor
+      - seeds supplier
+      - seed company
+      - agrochemical company
+      - agrochemical distributor
+      - farm supplies
+      - مستلزمات زراعية
+      - متجر زراعي
+      - شركة زراعية
+      - شركة أسمدة
+      - موزع أسمدة
+      - مبيدات زراعية
+      - موزع مبيدات
+      - بذور زراعية
+      - موزع بذور
+
+  - segment: irrigation_water_systems
+    priority: high
+    keywords:
+      - irrigation company
+      - irrigation systems
+      - drip irrigation
+      - irrigation equipment supplier
+      - irrigation contractor
+      - agricultural irrigation
+      - smart irrigation
+      - irrigation automation
+      - water management agriculture
+      - شركة ري
+      - أنظمة الري
+      - شبكات الري
+      - الري بالتنقيط
+      - معدات الري
+      - مستلزمات الري
+      - ري زراعي
+      - الري الذكي
+
+  - segment: greenhouse_protected_agriculture
+    priority: high
+    keywords:
+      - greenhouse company
+      - greenhouse farm
+      - greenhouse supplier
+      - greenhouse equipment
+      - commercial greenhouse
+      - protected agriculture
+      - hydroponic greenhouse
+      - climate controlled greenhouse
+      - agricultural greenhouse
+      - بيوت محمية
+      - شركة بيوت محمية
+      - مزارع بيوت محمية
+      - مستلزمات البيوت المحمية
+      - زراعة محمية
+      - صوب زراعية
+
+  - segment: commercial_farms_growers
+    priority: high
+    keywords:
+      - agricultural company
+      - commercial farm
+      - farming company
+      - vegetable farm
+      - fruit farm
+      - crop farm
+      - agricultural production company
+      - fresh produce grower
+      - farm management company
+      - شركة زراعية
+      - مؤسسة زراعية
+      - مزرعة
+      - مزارع زراعية
+      - إنتاج زراعي
+      - مزرعة خضروات
+      - مزرعة فواكه
+
+  - segment: date_palm_dates
+    priority: high
+    keywords:
+      - date farm
+      - date palm farm
+      - date company
+      - dates producer
+      - dates processing
+      - dates packing
+      - dates exporter
+      - palm farm
+      - نخيل
+      - مزرعة نخيل
+      - مزارع النخيل
+      - تمور
+      - شركة تمور
+      - مصنع تمور
+      - تعبئة تمور
+      - إنتاج التمور
+
+  - segment: horticulture_nurseries
+    priority: high
+    keywords:
+      - horticulture company
+      - plant nursery
+      - agricultural nursery
+      - commercial nursery
+      - tree nursery
+      - seedlings supplier
+      - ornamental plants nursery
+      - nursery wholesale
+      - مشتل زراعي
+      - مشاتل
+      - مشتل نباتات
+      - شتلات زراعية
+      - شتلات
+      - بستنة
+      - نباتات زينة
+
+  - segment: urban_pest_management
+    priority: high
+    keywords:
+      - pest control company
+      - pest management company
+      - commercial pest control
+      - termite control
+      - rodent control
+      - insect control
+      - fumigation company
+      - disinfection and pest control
+      - مكافحة حشرات
+      - شركة مكافحة حشرات
+      - مكافحة آفات
+      - شركة مكافحة آفات
+      - مكافحة النمل الأبيض
+      - مكافحة القوارض
+      - مكافحة حشرات ورش مبيدات
+
+  - segment: agricultural_pest_management
+    priority: high
+    keywords:
+      - agricultural pest control
+      - crop protection company
+      - integrated pest management
+      - IPM agriculture
+      - biological control
+      - plant protection company
+      - crop protection products
+      - agricultural spraying
+      - مكافحة الآفات الزراعية
+      - وقاية النبات
+      - حماية المحاصيل
+      - المكافحة المتكاملة للآفات
+      - مكافحة حيوية
+      - رش المبيدات الزراعية
+
+  - segment: farm_machinery_equipment
+    priority: high
+    keywords:
+      - agricultural machinery
+      - farm equipment
+      - agricultural equipment supplier
+      - tractor dealer
+      - farm machinery dealer
+      - agricultural tools supplier
+      - spraying equipment supplier
+      - معدات زراعية
+      - الآلات الزراعية
+      - معدات المزارع
+      - جرارات زراعية
+      - موزع معدات زراعية
+      - معدات رش زراعي
+
+  # ------------------------------------------------------------
+  # MEDIUM PRIORITY — valuable adjacent niches
+  # ------------------------------------------------------------
+
+  - segment: hydroponics_soilless_farming
+    priority: medium
+    keywords:
+      - hydroponics
+      - hydroponic farm
+      - hydroponic systems
+      - soilless farming
+      - vertical farming
+      - aquaponics
+      - الزراعة المائية
+      - زراعة مائية
+      - أنظمة هيدروبونيك
+      - الزراعة بدون تربة
+      - الزراعة العمودية
+
+  - segment: landscaping_grounds_management
+    priority: medium
+    keywords:
+      - landscaping company
+      - landscape contractor
+      - landscape maintenance
+      - garden maintenance company
+      - irrigation landscaping
+      - landscape nursery
+      - تنسيق حدائق
+      - شركة تنسيق حدائق
+      - صيانة حدائق
+      - مقاول زراعي
+      - تشجير
+
+  - segment: produce_packers_exporters
+    priority: medium
+    keywords:
+      - fresh produce company
+      - fruit and vegetable supplier
+      - produce packing
+      - agricultural packing house
+      - fruit exporter
+      - vegetable exporter
+      - agricultural exporter
+      - fresh produce distributor
+      - تعبئة وتغليف المنتجات الزراعية
+      - تعبئة الخضار والفواكه
+      - تصدير المنتجات الزراعية
+      - مورد خضار وفواكه
+      - موزع خضار وفواكه
+
+  - segment: agricultural_wholesale_trading
+    priority: medium
+    keywords:
+      - agricultural trading company
+      - agriculture wholesale
+      - farm products wholesaler
+      - agricultural distributor
+      - agricultural import export
+      - شركة تجارة زراعية
+      - تجارة المنتجات الزراعية
+      - موزع منتجات زراعية
+      - استيراد وتصدير زراعي
+      - تجارة مستلزمات زراعية
+
+  - segment: food_processing_agri
+    priority: medium
+    keywords:
+      - fruit processing company
+      - vegetable processing
+      - food processing agriculture
+      - agricultural products factory
+      - frozen vegetables company
+      - juice processing company
+      - مصنع منتجات زراعية
+      - تصنيع غذائي
+      - تصنيع الخضار والفواكه
+      - مصنع عصائر
+      - مصنع تعبئة غذائية
+
+  - segment: organic_farming_inputs
+    priority: medium
+    keywords:
+      - organic farm
+      - organic fertilizer
+      - compost supplier
+      - biofertilizer
+      - organic agriculture company
+      - biological pesticide
+      - مزرعة عضوية
+      - زراعة عضوية
+      - سماد عضوي
+      - أسمدة عضوية
+      - كمبوست
+      - مبيدات حيوية
+
+  - segment: agricultural_services_consulting
+    priority: medium
+    keywords:
+      - agricultural services
+      - agricultural consulting
+      - agronomy consulting
+      - farm management services
+      - agricultural engineering company
+      - agricultural contractor
+      - خدمات زراعية
+      - استشارات زراعية
+      - استشاري زراعي
+      - هندسة زراعية
+      - إدارة المزارع
+
+  - segment: livestock_dairy_poultry_suppliers
+    priority: medium
+    keywords:
+      - livestock equipment supplier
+      - poultry equipment supplier
+      - dairy farm equipment
+      - animal feed supplier
+      - livestock supplies
+      - poultry farm supplier
+      - معدات دواجن
+      - معدات مزارع الدواجن
+      - معدات مزارع الألبان
+      - أعلاف
+      - مورد أعلاف
+      - مستلزمات الثروة الحيوانية
+
+  - segment: beekeeping_honey
+    priority: medium
+    keywords:
+      - beekeeping company
+      - beekeeping supplies
+      - apiary
+      - honey producer
+      - honey company
+      - bee farm
+      - مناحل
+      - تربية النحل
+      - مستلزمات النحل
+      - إنتاج العسل
+      - شركة عسل
+
+  - segment: coffee_specialty_crop_growers
+    priority: medium
+    keywords:
+      - coffee farm
+      - Saudi coffee farm
+      - coffee grower
+      - coffee producer
+      - agricultural cooperative coffee
+      - مزرعة بن
+      - مزارع البن
+      - البن السعودي
+      - إنتاج البن
+    cities:
+      - jazan
+      - abha
+      - al_baha
+      - najran
+
+  - segment: mango_tropical_fruit
+    priority: medium
+    keywords:
+      - mango farm
+      - mango producer
+      - tropical fruit farm
+      - fruit grower
+      - مزرعة مانجو
+      - مزارع المانجو
+      - إنتاج المانجو
+      - فواكه استوائية
+    cities:
+      - jazan
+      - sabya
+
+  - segment: agri_technology_smart_farming
+    priority: medium
+    keywords:
+      - smart farming
+      - precision agriculture
+      - agriculture technology
+      - agri tech
+      - farm automation
+      - agriculture IoT
+      - farm monitoring systems
+      - الزراعة الذكية
+      - التقنية الزراعية
+      - الزراعة الدقيقة
+      - أتمتة المزارع
+      - إنترنت الأشياء الزراعي
+
+  - segment: cold_storage_agri_logistics
+    priority: medium
+    keywords:
+      - agricultural cold storage
+      - fruit cold storage
+      - vegetable cold storage
+      - refrigerated warehouse
+      - fresh produce logistics
+      - cold chain agriculture
+      - مخازن تبريد
+      - مستودعات مبردة
+      - تبريد المنتجات الزراعية
+      - سلسلة التبريد
+      - نقل مبرد
+
+  # ------------------------------------------------------------
+  # LOWER PRIORITY / EXPANSION — test after core segments
+  # ------------------------------------------------------------
+
+  - segment: agricultural_cooperatives
+    priority: low
+    keywords:
+      - agricultural cooperative
+      - farmers cooperative
+      - cooperative agriculture
+      - جمعية زراعية
+      - جمعية تعاونية زراعية
+      - تعاونية زراعية
+
+  - segment: floriculture_flowers
+    priority: low
+    keywords:
+      - flower farm
+      - cut flower grower
+      - flower nursery
+      - floriculture
+      - مزرعة ورد
+      - مزرعة زهور
+      - مشتل زهور
+      - إنتاج الزهور
+
+  - segment: soil_labs_agricultural_testing
+    priority: low
+    keywords:
+      - soil testing laboratory
+      - agricultural laboratory
+      - plant analysis laboratory
+      - water soil testing
+      - مختبر زراعي
+      - تحليل التربة
+      - مختبر تربة
+      - تحليل مياه الري
+
+  - segment: agricultural_packaging_suppliers
+    priority: low
+    keywords:
+      - agricultural packaging
+      - produce packaging supplier
+      - fruit packaging
+      - vegetable packaging
+      - crates supplier agriculture
+      - تغليف زراعي
+      - عبوات زراعية
+      - تعبئة المنتجات الزراعية
+      - صناديق خضار وفواكه
