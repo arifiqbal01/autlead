@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import random
 import re
@@ -26,7 +25,6 @@ from .errors import (
 )
 from .models import GroqPeopleExtraction
 from .rate_limiter import GroqRateLimiter
-
 
 logger = get_logger(__name__)
 
@@ -228,16 +226,16 @@ class GroqLLMProvider:
     # =========================================================
 
     async def _execute_with_rate_limit(
-        self,
-        operation: Callable[
-            [],
-            Awaitable[Any],
-        ],
+            self,
+            operation: Callable[
+                [],
+                Awaitable[Any],
+            ],
     ) -> Any:
         for attempt in range(
-            1,
-            self._max_rate_limit_attempts
-            + 1,
+                1,
+                self._max_rate_limit_attempts
+                + 1,
         ):
             await self._rate_limiter.acquire()
 
@@ -246,15 +244,15 @@ class GroqLLMProvider:
 
             except Exception as exc:
                 if not self._is_rate_limited(
-                    exc
+                        exc
                 ):
                     self._raise_provider_error(
                         exc
                     )
 
                 if (
-                    attempt
-                    >= self._max_rate_limit_attempts
+                        attempt
+                        >= self._max_rate_limit_attempts
                 ):
                     logger.warning(
                         "groq_rate_limit_exhausted",
@@ -282,9 +280,42 @@ class GroqLLMProvider:
                 )
 
                 wait_seconds = (
-                    retry_seconds
-                    + jitter
+                        retry_seconds
+                        + jitter
                 )
+
+                cooldown_accepted = (
+                    await self._rate_limiter.cooldown(
+                        wait_seconds
+                    )
+                )
+
+                if not cooldown_accepted:
+                    logger.warning(
+                        "groq_rate_limit_wait_too_long",
+                        model=self._model,
+                        attempt=attempt,
+                        max_attempts=(
+                            self._max_rate_limit_attempts
+                        ),
+                        retry_after_seconds=(
+                            retry_seconds
+                        ),
+                        wait_seconds=round(
+                            wait_seconds,
+                            2,
+                        ),
+                        error_type=(
+                            type(exc).__name__
+                        ),
+                    )
+
+                    raise GroqRateLimitedError(
+                        "Groq requested a rate-limit "
+                        "cooldown that exceeds the "
+                        "configured maximum: "
+                        f"{wait_seconds:.1f}s"
+                    ) from exc
 
                 logger.warning(
                     "groq_rate_limited_retry",
@@ -303,10 +334,6 @@ class GroqLLMProvider:
                     error_type=(
                         type(exc).__name__
                     ),
-                )
-
-                await self._rate_limiter.cooldown(
-                    wait_seconds
                 )
 
         raise GroqProviderError(
@@ -367,10 +394,7 @@ class GroqLLMProvider:
                 len("```"):
             ]
 
-        if stripped.endswith(
-            "```"
-        ):
-            stripped = stripped[:-3]
+        stripped = stripped.removesuffix("```")
 
         return stripped.strip()
 
@@ -422,11 +446,15 @@ class GroqLLMProvider:
         )
 
         patterns = (
-            r"retry[\s_-]*after[^0-9]*"
-            r"([0-9]+(?:\.[0-9]+)?)",
-            r"retry\s+in\s+"
-            r"([0-9]+(?:\.[0-9]+)?)"
-            r"\s*s",
+            (
+                r"retry[\s_-]*after[^0-9]*"
+                r"([0-9]+(?:\.[0-9]+)?)"
+            ),
+            (
+                r"retry\s+in\s+"
+                r"([0-9]+(?:\.[0-9]+)?)"
+                r"\s*s"
+            ),
         )
 
         for pattern in patterns:

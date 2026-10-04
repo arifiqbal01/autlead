@@ -11,6 +11,7 @@ class GroqRateLimiter:
         *,
         requests_per_minute: int,
         requests_per_day: int,
+        max_cooldown_seconds: float = 30.0,
     ) -> None:
         if requests_per_minute < 1:
             raise ValueError(
@@ -22,8 +23,16 @@ class GroqRateLimiter:
                 "requests_per_day must be >= 1"
             )
 
+        if max_cooldown_seconds <= 0:
+            raise ValueError(
+                "max_cooldown_seconds must be > 0"
+            )
+
         self._rpm = requests_per_minute
         self._rpd = requests_per_day
+        self._max_cooldown_seconds = (
+            max_cooldown_seconds
+        )
 
         self._lock = asyncio.Lock()
 
@@ -50,8 +59,8 @@ class GroqRateLimiter:
     async def acquire(
         self,
     ) -> None:
-        async with self._lock:
-            while True:
+        while True:
+            async with self._lock:
                 self._reset_day_if_needed()
 
                 if (
@@ -64,13 +73,10 @@ class GroqRateLimiter:
 
                 now = time.monotonic()
 
-                # Server-directed cooldown.
-                if now < self._blocked_until:
-                    await asyncio.sleep(
-                        self._blocked_until
-                        - now
-                    )
-                    continue
+                cooldown_wait = max(
+                    0.0,
+                    self._blocked_until - now,
+                )
 
                 # Rolling 60-second request window.
                 while (
@@ -120,36 +126,47 @@ class GroqRateLimiter:
                     )
 
                 wait_seconds = max(
+                    cooldown_wait,
                     interval_wait,
                     window_wait,
                 )
 
-                if wait_seconds > 0:
-                    await asyncio.sleep(
-                        max(
-                            0.1,
-                            wait_seconds,
-                        )
+                if wait_seconds <= 0:
+                    now = time.monotonic()
+
+                    self._minute_requests.append(
+                        now
                     )
-                    continue
 
-                now = time.monotonic()
+                    self._last_request_at = now
+                    self._daily_count += 1
 
-                self._minute_requests.append(
-                    now
+                    return
+
+            # Do not hold the lock while sleeping.
+            await asyncio.sleep(
+                max(
+                    0.1,
+                    wait_seconds,
                 )
-
-                self._last_request_at = now
-                self._daily_count += 1
-
-                return
+            )
 
     async def cooldown(
         self,
         seconds: float,
-    ) -> None:
+    ) -> bool:
+        """
+        Apply a short provider-directed cooldown.
+
+        Returns False when the requested cooldown exceeds the
+        configured maximum. The caller should fail fast and use
+        its fallback instead of blocking a worker for a long time.
+        """
         if seconds <= 0:
-            return
+            return True
+
+        if seconds > self._max_cooldown_seconds:
+            return False
 
         async with self._lock:
             self._blocked_until = max(
@@ -157,6 +174,8 @@ class GroqRateLimiter:
                 time.monotonic()
                 + seconds,
             )
+
+        return True
 
     def _reset_day_if_needed(
         self,
