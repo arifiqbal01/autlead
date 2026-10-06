@@ -379,9 +379,15 @@ class GosomGoogleMapsDiscoveryProvider:
                     "without producing usable results"
                 ) from process_failure
 
-            raise BusinessDiscoveryProviderError(
-                "Gosom results file contains no usable records"
+            logger.info(
+                "gosom_discovery_empty",
+                query=query.query,
+                location=query.location,
+                run_dir=str(work_dir),
+                results_file=str(results_file),
             )
+
+            return []
 
         if process_failure is not None:
             event = (
