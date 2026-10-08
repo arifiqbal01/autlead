@@ -381,7 +381,7 @@ async def run(
         min_seo=args.min_seo,
         max_seo=args.max_seo,
 
-        has_email=args.has_email,
+        has_email=args.has_outreach,
         has_phone=args.has_phone,
 
         has_linkedin=args.has_linkedin,

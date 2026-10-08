@@ -139,7 +139,7 @@ async def export_webartsy_leads(
         "performance_score",
         "seo_score",
 
-        "outreach",
+        "email",
         "phone",
 
         "linkedin_company_urls",
