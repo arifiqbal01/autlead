@@ -11,6 +11,7 @@ from phonenumbers.phonenumberutil import PhoneNumberType
 # This is mainly a convenience layer; phonenumbers supports many more.
 SUPPORTED_REGIONS = {
     "PK": "Pakistan",
+    "SA": "Saudi Arabia",
     "GB": "United Kingdom",
     "US": "United States",
     "CA": "Canada",
