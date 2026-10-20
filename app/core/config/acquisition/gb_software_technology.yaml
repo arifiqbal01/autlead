@@ -1,0 +1,89 @@
+
+version: 1
+name: uk_software_partnerships
+
+country:
+  code: GB
+  name: United Kingdom
+
+industry: software_technology
+
+cities:
+  manchester:
+    name: Manchester
+    grid_bbox: "53.400,-2.350,53.550,-2.150"
+    grid_cell_km: 2.0
+    zoom: 15
+
+  birmingham:
+    name: Birmingham
+    grid_bbox: "52.400,-2.050,52.550,-1.800"
+    grid_cell_km: 2.0
+    zoom: 15
+
+  leeds:
+    name: Leeds
+    grid_bbox: "53.740,-1.650,53.870,-1.450"
+    grid_cell_km: 2.0
+    zoom: 15
+
+  bristol:
+    name: Bristol
+    grid_bbox: "51.400,-2.700,51.520,-2.500"
+    grid_cell_km: 2.0
+    zoom: 15
+
+targets:
+  - segment: custom_software_development
+    priority: high
+    keywords:
+      - custom software development company
+      - software development agency
+      - software development consultancy
+      - bespoke software development
+      - backend development company
+      - web application development company
+
+  - segment: digital_agencies
+    priority: high
+    keywords:
+      - digital agency
+      - web development agency
+      - digital product agency
+      - technical digital agency
+      - full service digital agency
+
+  - segment: software_consultancies
+    priority: high
+    keywords:
+      - software consultancy
+      - IT consultancy
+      - technology consulting company
+      - software engineering consultancy
+      - cloud development consultancy
+
+  - segment: product_development
+    priority: high
+    keywords:
+      - product development studio
+      - SaaS development company
+      - MVP development agency
+      - startup development studio
+      - digital product development company
+
+  - segment: ai_automation
+    priority: high
+    keywords:
+      - AI development company
+      - AI automation agency
+      - business automation consultancy
+      - workflow automation company
+      - AI integration company
+
+  - segment: ecommerce_agencies
+    priority: medium
+    keywords:
+      - Shopify development agency
+      - ecommerce development company
+      - WordPress development agency
+      - ecommerce software agency
